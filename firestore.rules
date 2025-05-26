@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection rules
+    match /users/{userId} {
+      // Allow read access to all authenticated users
+      allow read: if request.auth != null;
+      
+      // Allow users to create and update their own profiles
+      allow create, update: if request.auth != null && request.auth.uid == userId && validUserData();
+      
+      // Validate user data
+      function validUserData() {
+        return request.resource.data.keys().hasAll(['uid', 'email', 'username']) &&
+               request.resource.data.uid == userId &&
+               request.resource.data.email is string &&
+               request.resource.data.username is string;
+      }
+    }
+    
+    // Messages collection rules
+    match /messages/{messageId} {
+      // Allow authenticated users to read messages where they are sender or receiver
+      allow read: if request.auth != null && 
+                   (resource.data.senderId == request.auth.uid || 
+                    resource.data.receiverId == request.auth.uid);
+      
+      // Allow authenticated users to create messages where they are the sender
+      allow create: if request.auth != null && 
+                     request.resource.data.senderId == request.auth.uid;
+      
+      // Allow users to update delivery/seen status only if they are the receiver
+      allow update: if request.auth != null &&
+                    resource.data.receiverId == request.auth.uid &&
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['isDelivered', 'isSeen']);
+    }
+  }
+} 

@@ -1,0 +1,42 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# Make sure shell scripts use LF
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# Handle binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# Flutter/Dart specific
+*.dart text
+*.yaml text
+*.json text
+*.md text
+pubspec.* text
+
+# iOS specific
+*.pbxproj merge=union
+*.xcscheme text
+*.xcworkspacedata text
+*.swift text
+*.h text
+*.m text
+*.mm text
+
+# Android specific
+*.gradle text
+*.xml text
+*.properties text
+*.kt text
+*.java text 
