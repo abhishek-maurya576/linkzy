@@ -1,6 +1,6 @@
 # Linkzy - Real-time Chat Application
 
-![Linkzy Logo](assets/images/linkzy_icon.png)
+<img src="assets/images/linkzy_icon.png" width="200" alt="Linkzy Logo">
 
 A modern real-time 1-on-1 chat application built with Flutter and Firebase, featuring a beautiful UI with interactive animations.
 
