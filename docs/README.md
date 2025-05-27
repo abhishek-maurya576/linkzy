@@ -10,11 +10,12 @@ Linkzy is a modern, real-time 1-on-1 chat application built using Flutter and Fi
 
 - **Real-time Messaging**: Instant message delivery with typing indicators
 - **User Authentication**: Secure login and registration with Firebase Auth
-- **User Profiles**: Customizable user profiles with profile pictures
+- **User Profiles**: Customizable user profiles with profile pictures or predefined avatars
 - **Message Status**: Read receipts and delivery confirmations
 - **Responsive Design**: Works on mobile, web, and desktop platforms
 - **Dark Mode Support**: UI adapts to system theme preferences
 - **Search Functionality**: Find users easily
+- **Message Notifications**: Sound and visual alerts for new messages
 
 ## Documentation Index
 

@@ -28,7 +28,7 @@ Linkzy works on the following platforms:
 - **iOS**: Download from App Store (coming soon)
 
 #### On Web:
-- comming soon
+- coming soon
 
 <div align="center">
   <img src="./images/screens/splash_screen.png" alt="Splash Screen" width="300"/>
@@ -43,7 +43,7 @@ Linkzy works on the following platforms:
 4. Tap "Register"
 5. Complete your profile by:
    - Adding a username
-   - Uploading a profile picture (optional)
+   - Uploading a profile picture (optional) or selecting an avatar
    - Tap "Continue"
 6. You're now ready to use Linkzy!
 
@@ -96,7 +96,7 @@ Linkzy has a simple, intuitive interface with four main sections accessible from
 ### Understanding Message Status
 
 Each message has indicators to show its status:
-- Single check mark (✓): Message was delivered to the server
+- Single clock mark (⏲): Message was delivered to the server
 - Double check mark (✓✓): Message was delivered to the recipient
 - Blue double check mark (✓✓): Message was read by the recipient
 
@@ -109,6 +109,13 @@ Each message has indicators to show its status:
 
 Your complete conversation history is automatically loaded when you open a chat. Scroll up to see older messages.
 
+### Notification Alerts
+
+When you receive a new message, Linkzy will alert you with:
+- A sound notification
+- A visual notification in the chat list
+- A message popup if you have enabled notifications
+
 ## Managing Your Profile
 
 ### Viewing Your Profile
@@ -116,7 +123,7 @@ Your complete conversation history is automatically loaded when you open a chat.
 1. Tap on the "Profile" tab
 2. Your profile information will be displayed, including:
    - Username
-   - Profile picture
+   - Profile picture or avatar
    - Email address
 
 ### Editing Your Profile
@@ -127,6 +134,18 @@ Your complete conversation history is automatically loaded when you open a chat.
    - Tap your profile picture to change it
    - Edit your username
 4. Tap "Save" to update your profile
+
+### Changing Your Profile Picture
+
+1. Go to the "Profile" tab
+2. Tap on your profile picture or the camera icon
+3. Choose from the following options:
+   - **Choose from Gallery**: Upload a picture from your device
+   - **Select Avatar**: Choose from predefined avatar images
+4. If selecting an avatar:
+   - Browse the grid of available avatars
+   - Tap on your preferred avatar to select it
+5. Your profile will be updated with the new picture immediately
 
 ## Settings and Preferences
 
@@ -185,11 +204,17 @@ If the app crashes:
 2. Clear the app cache (in device settings)
 3. Reinstall the app if problems persist
 
+### Profile Picture Not Displaying
+
+If your profile picture or avatar is not displaying:
+1. Try selecting a different avatar
+2. Ensure your internet connection is stable
+3. Try logging out and back in
+
 ### Getting Help
 
 If you continue to experience issues:
-1. Visit our [Help Center](https://help.linkzy.com) (example URL)
-2. Contact support at support@linkzy.com (example email)
+1. Contact support at official.linkzy@gmail.com
 
 ---
 

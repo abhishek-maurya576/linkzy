@@ -23,6 +23,7 @@ This document provides a comprehensive overview of the Linkzy documentation, hel
 | [Architecture Diagram](./images/architecture.md) | Visual representation of the application's architecture. |
 | [Chat Message Flow](./images/chat_flow.md) | Diagram illustrating how messages flow through the system. |
 | [Database Schema](./images/database_schema.md) | Details of the Firestore database structure and relationships. |
+| [Avatar Feature](./images/avatar_feature.md) | Documentation of the predefined avatar selection implementation. |
 
 ## App Screenshots
 
@@ -35,6 +36,7 @@ The application screenshots are available in multiple documentation files:
 | [User Conversation](./images/screens/tow_user_chat.png) | Conversation between two users |
 | [User Search](./images/screens/search_user.png) | Interface for finding other users |
 | [Settings Screen](./images/screens/settings.png) | App configuration options |
+| [Avatar Selection](./images/screens/avatar_selection.png) | Interface for selecting predefined avatars |
 
 Screenshots are also embedded in the [User Guide](./USER_GUIDE.md) and [README](./README.md) for reference.
 
@@ -55,6 +57,14 @@ If you're developing or maintaining the application, start with:
 2. [Architecture](./ARCHITECTURE.md) to understand the codebase structure
 3. [Firebase Setup](./FIREBASE_SETUP.md) for backend configuration
 
+### For Feature References
+
+For information about specific features:
+
+1. [User Profiles](./FEATURES.md#user-profiles) for profile and avatar customization
+2. [Messaging](./FEATURES.md#messaging) for chat functionality
+3. [Avatar Selection](./USER_GUIDE.md#changing-your-profile-picture) for using predefined avatars
+
 ### For Project Managers
 
 If you're overseeing the project, start with:
@@ -69,4 +79,4 @@ When updating documentation:
 1. Keep this index updated when adding new documentation files
 2. Maintain consistent formatting across all documentation
 3. Update diagrams when architectural changes occur
-4. Ensure all links between documents remain functional 
+4. Ensure all links between documents remain functional

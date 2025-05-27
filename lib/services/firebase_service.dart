@@ -256,6 +256,17 @@ class FirebaseService {
     }
   }
 
+  // Update user profile with avatar
+  Future<void> updateUserWithAvatar(AppUser user, String avatarPath) async {
+    try {
+      // The avatarPath is the local asset path, we just store it directly
+      final updatedUser = user.copyWith(profilePicUrl: avatarPath);
+      await createUserProfile(updatedUser);
+    } catch (e) {
+      throw Exception('Failed to update user with avatar: ${e.toString()}');
+    }
+  }
+
   // Get all users with recent chats
   Stream<List<AppUser>> getUsersWithChats(String currentUserId) {
     try {
@@ -274,49 +285,88 @@ class FirebaseService {
           .limit(50) // Limit to most recent
           .snapshots();
       
-      // First, collect the user IDs from both streams
-      final userIdsStream = Rx.combineLatest2<QuerySnapshot<Map<String, dynamic>>, QuerySnapshot<Map<String, dynamic>>, Set<String>>(
+      // First, collect the user IDs from both streams with their latest timestamps
+      final userIdsStream = Rx.combineLatest2<QuerySnapshot<Map<String, dynamic>>, QuerySnapshot<Map<String, dynamic>>, Map<String, dynamic>>(
         sentMessagesQuery,
         receivedMessagesQuery,
         (sentSnapshot, receivedSnapshot) {
-          final uniqueUserIds = <String>{};
+          final userTimestamps = <String, dynamic>{};
           
           // Process sent messages
           for (var doc in sentSnapshot.docs) {
             final data = doc.data();
             final receiverId = data['receiverId'] as String;
-            if (receiverId != currentUserId) uniqueUserIds.add(receiverId);
+            final timestamp = data['timestamp'];
+            
+            if (receiverId != currentUserId) {
+              if (!userTimestamps.containsKey(receiverId) || 
+                  timestamp != null && (userTimestamps[receiverId] == null || 
+                  timestamp.compareTo(userTimestamps[receiverId]) > 0)) {
+                userTimestamps[receiverId] = timestamp;
+              }
+            }
           }
           
           // Process received messages
           for (var doc in receivedSnapshot.docs) {
             final data = doc.data();
             final senderId = data['senderId'] as String;
-            if (senderId != currentUserId) uniqueUserIds.add(senderId);
+            final timestamp = data['timestamp'];
+            
+            if (senderId != currentUserId) {
+              if (!userTimestamps.containsKey(senderId) || 
+                  timestamp != null && (userTimestamps[senderId] == null || 
+                  timestamp.compareTo(userTimestamps[senderId]) > 0)) {
+                userTimestamps[senderId] = timestamp;
+              }
+            }
           }
           
-          return uniqueUserIds;
+          return userTimestamps;
         },
       );
       
       // Then convert the user IDs to AppUser objects with caching optimization
-      return userIdsStream.asyncMap((uniqueUserIds) async {
+      return userIdsStream.asyncMap((userTimestamps) async {
+        final userEntries = userTimestamps.entries.toList();
         final users = <AppUser>[];
+        final usersWithTimestamps = <Map<String, dynamic>>[];
         final futures = <Future<AppUser?>>[];
         
         // Create parallel requests for better performance
-        for (final id in uniqueUserIds) {
-          futures.add(getUserProfile(id));
+        for (final entry in userEntries) {
+          futures.add(getUserProfile(entry.key));
         }
         
         // Wait for all requests to complete
         final results = await Future.wait(futures);
         
-        // Add non-null results to the list
-        for (final user in results) {
+        // Add non-null results to the list with their timestamps
+        for (int i = 0; i < results.length; i++) {
+          final user = results[i];
           if (user != null) {
-            users.add(user);
+            usersWithTimestamps.add({
+              'user': user,
+              'timestamp': userTimestamps[userEntries[i].key]
+            });
           }
+        }
+        
+        // Sort by timestamp (descending)
+        usersWithTimestamps.sort((a, b) {
+          final timestampA = a['timestamp'];
+          final timestampB = b['timestamp'];
+          
+          if (timestampA == null && timestampB == null) return 0;
+          if (timestampA == null) return 1;
+          if (timestampB == null) return -1;
+          
+          return timestampB.compareTo(timestampA);
+        });
+        
+        // Extract only the users from the sorted list
+        for (final item in usersWithTimestamps) {
+          users.add(item['user'] as AppUser);
         }
         
         return users;

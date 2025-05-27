@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../services/firebase_service.dart';
 import '../models/app_user.dart';
+import 'avatar_selection_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -55,6 +56,66 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _errorMessage = 'Error loading profile: $e';
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  // Show options for profile picture
+  Future<void> _showProfilePictureOptions() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Choose from Gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _uploadProfilePicture();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.face),
+            title: const Text('Select Avatar'),
+            onTap: () {
+              Navigator.pop(context);
+              _selectAvatar();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectAvatar() async {
+    final avatarPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AvatarSelectionScreen(),
+      ),
+    );
+
+    if (avatarPath != null && _currentUser != null) {
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      try {
+        await _firebaseService.updateUserWithAvatar(_currentUser!, avatarPath);
+        
+        // Reload user data to get updated profile
+        await _loadCurrentUser();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update avatar: $e')),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+        }
       }
     }
   }
@@ -171,7 +232,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Stack(
               children: [
                 GestureDetector(
-                  onTap: _uploadProfilePicture,
+                  onTap: _showProfilePictureOptions,
                   child: _isUploadingImage
                       ? Container(
                           width: 140,
@@ -190,7 +251,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           radius: 70,
                           backgroundColor: Theme.of(context).primaryColor,
                           backgroundImage: _currentUser!.profilePicUrl.isNotEmpty
-                              ? NetworkImage(_currentUser!.profilePicUrl)
+                              ? _currentUser!.profilePicUrl.startsWith('assets/')
+                                  ? AssetImage(_currentUser!.profilePicUrl) as ImageProvider
+                                  : NetworkImage(_currentUser!.profilePicUrl)
                               : null,
                           child: _currentUser!.profilePicUrl.isEmpty
                               ? Text(
@@ -222,7 +285,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Icons.camera_alt,
                         color: Colors.white,
                       ),
-                      onPressed: _uploadProfilePicture,
+                      onPressed: _showProfilePictureOptions,
                     ),
                   ),
                 ),

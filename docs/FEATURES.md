@@ -16,6 +16,8 @@ This document outlines the features and functionality of the Linkzy chat applica
 
 - **Profile Creation**: Set username and profile picture during onboarding
 - **Profile Editing**: Update username, email, and profile picture
+- **Predefined Avatars**: Choose from a collection of predefined avatar images
+- **Custom Profile Pictures**: Upload your own profile picture from your device
 - **Profile Viewing**: View other users' profiles
 - **Username Uniqueness**: Ensures all usernames are unique across the platform
 
@@ -26,13 +28,14 @@ This document outlines the features and functionality of the Linkzy chat applica
 - **Message Status**: Track when messages are delivered and read
 - **Message History**: Access full conversation history
 - **Message Timestamps**: Display when messages were sent
+- **Message Notifications**: Receive sound and popup notifications for new messages
 
 For a detailed look at how messages flow through the system, see the [Chat Message Flow Diagram](./images/chat_flow.md).
 
 ### Search and Discovery
 
 - **User Search**: Find other users by username
-- **Recent Chats**: Quick access to recent conversations
+- **Recent Chats**: Quick access to recent conversations sorted by most recent
 - **Conversation Preview**: See the last message and time in chat list
 
 ## UI/UX Features
@@ -41,9 +44,10 @@ For a detailed look at how messages flow through the system, see the [Chat Messa
 
 The home screen serves as the main hub for the application, featuring:
 
-- **Chat List**: Displays recent conversations with message previews
+- **Chat List**: Displays recent conversations with message previews in descending order (newest first)
 - **Navigation Bar**: Easy access to other app sections
 - **Status Indicators**: Shows online/offline status of users
+- **Unread Indicators**: Visual cues for unread messages
 
 ### Chat Screen
 
@@ -53,7 +57,8 @@ The chat screen provides a rich messaging experience with:
 - **Timestamps**: Message sending time display
 - **Read/Delivery Status**: Indicators for message status
 - **Input Bar**: Text input with send button
-- **User Info**: Display of the conversation partner's name and photo
+- **User Info**: Display of the conversation partner's name and avatar
+- **Emoji Support**: Enhanced display of emoji characters
 
 ### Profile Screen
 
@@ -61,6 +66,8 @@ The profile screen allows users to:
 
 - **View Profile**: See their own profile information
 - **Edit Profile**: Change username and profile picture
+- **Choose Avatar**: Select from predefined avatar images
+- **Upload Picture**: Upload custom profile pictures from device gallery
 - **Account Settings**: Access account-related settings
 
 ### Settings Screen
@@ -113,7 +120,7 @@ The following features are planned for future releases:
 
 - **Group Messaging**: Create and participate in group conversations
 - **Media Sharing**: Send images, videos, and files in conversations
-- **Push Notifications**: Receive notifications for new messages
+- **Push Notifications**: Receive notifications for new messages when app is closed
 - **Voice Messages**: Record and send audio messages
 - **Video Calling**: Integrated video call functionality
 - **Message Search**: Search through message content

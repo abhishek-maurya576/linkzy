@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -11,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _firebaseService = FirebaseService();
+  final _notificationService = NotificationService();
   bool _isDarkMode = true;
   bool _areNotificationsEnabled = true;
   bool _isLoading = false;
@@ -33,6 +35,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isDarkMode = prefs.getBool('isDarkMode') ?? true;
         _areNotificationsEnabled = prefs.getBool('areNotificationsEnabled') ?? true;
       });
+      
+      // Apply notification settings
+      _notificationService.toggleSound(_areNotificationsEnabled);
     } catch (e) {
       debugPrint('Failed to load settings: $e');
     } finally {
@@ -47,6 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isDarkMode', _isDarkMode);
       await prefs.setBool('areNotificationsEnabled', _areNotificationsEnabled);
+      
+      // Apply notification settings
+      _notificationService.toggleSound(_areNotificationsEnabled);
     } catch (e) {
       debugPrint('Failed to save settings: $e');
     }

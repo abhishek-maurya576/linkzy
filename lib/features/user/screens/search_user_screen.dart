@@ -169,7 +169,11 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).primaryColor,
-          backgroundImage: user.profilePicUrl.isNotEmpty ? NetworkImage(user.profilePicUrl) : null,
+          backgroundImage: user.profilePicUrl.isNotEmpty 
+              ? user.profilePicUrl.startsWith('assets/')
+                  ? AssetImage(user.profilePicUrl) as ImageProvider
+                  : NetworkImage(user.profilePicUrl) 
+              : null,
           child: user.profilePicUrl.isEmpty
               ? Text(
                   user.username.substring(0, 1).toUpperCase(),

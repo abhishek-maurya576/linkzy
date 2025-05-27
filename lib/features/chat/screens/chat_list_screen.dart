@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/notification_service.dart';
 import '../../user/models/app_user.dart';
 import '../models/message.dart';
 import 'chat_screen.dart';
@@ -14,13 +15,35 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final _firebaseService = FirebaseService();
+  final _notificationService = NotificationService();
   String? _currentUserId;
+  
+  // Track processed message IDs to prevent duplicate notifications
+  final Map<String, String> _processedMessageIds = {};
 
   @override
   void initState() {
     super.initState();
     // Get current user ID from Firebase Auth
     _currentUserId = _firebaseService.currentUserId;
+  }
+  
+  // Check for new messages and show notifications
+  Future<void> _checkForNewMessage(Message? latestMessage, AppUser sender) async {
+    if (latestMessage == null || _currentUserId == null) return;
+    
+    // Only show notifications for messages from other users that haven't been seen
+    if (latestMessage.senderId != _currentUserId && 
+        !latestMessage.isSeen &&
+        _processedMessageIds[sender.uid] != latestMessage.id) {
+      
+      // Update processed message ID for this sender
+      _processedMessageIds[sender.uid] = latestMessage.id;
+      
+      // Play notification sound and show popup
+      _notificationService.playNotificationSound();
+      await _notificationService.showMessageNotification(sender, latestMessage.content);
+    }
   }
 
   @override
@@ -90,6 +113,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 if (latestMessage == null) {
                   return const SizedBox.shrink();
                 }
+                
+                // Check for new messages and show notifications
+                // Handle async method in a fire-and-forget way
+                _checkForNewMessage(latestMessage, user).then((_) {
+                  // Notification shown or not needed
+                }).catchError((error) {
+                  debugPrint('Error showing notification: $error');
+                });
                 
                 return ChatListItem(
                   user: user,
@@ -259,20 +290,27 @@ class ChatListItem extends StatelessWidget {
                 child: user.profilePicUrl.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(28),
-                        child: Image.network(
-                          user.profilePicUrl,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Text(
-                            user.username.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                        child: user.profilePicUrl.startsWith('assets/')
+                            ? Image.asset(
+                                user.profilePicUrl,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.network(
+                                user.profilePicUrl,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Text(
+                                  user.username.substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                       )
                     : Text(
                         user.username.substring(0, 1).toUpperCase(),

@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/firebase_service.dart';
+import 'services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/forgot_password_screen.dart';
 import 'features/chat/screens/home_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+
+// Handle background messages
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Handle background message
+  print("Handling a background message: ${message.messageId}");
+}
 
 class LinkzyApp extends StatefulWidget {
   const LinkzyApp({super.key});
@@ -18,6 +27,62 @@ class LinkzyApp extends StatefulWidget {
 
 class _LinkzyAppState extends State<LinkzyApp> {
   final FirebaseService _firebaseService = FirebaseService();
+  final NotificationService _notificationService = NotificationService();
+  
+  @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+  }
+  
+  Future<void> _initNotifications() async {
+    // Initialize local notifications
+    await _notificationService.init();
+    
+    // Initialize Firebase Messaging
+    await _initFirebaseMessaging();
+  }
+  
+  Future<void> _initFirebaseMessaging() async {
+    // Set the background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    
+    // Get permission for notifications
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    
+    print('User notification permission status: ${settings.authorizationStatus}');
+    
+    // Get FCM token for this device
+    String? token = await FirebaseMessaging.instance.getToken();
+    print('FCM Token: $token');
+    
+    // Handle incoming messages when the app is in foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+      
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
+        
+        // Use the notification service to handle the message
+        await _notificationService.handleFirebaseMessage(message);
+      }
+    });
+    
+    // Handle notification clicks when app is in background but open
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('A notification was clicked on: ${message.data}');
+      // Here you could navigate to the relevant chat
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
