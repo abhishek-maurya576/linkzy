@@ -50,7 +50,6 @@ Our comprehensive documentation includes:
 
 <div align="center">
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; max-width: 1000px; margin: auto;">
-    
     <div style="text-align: center;">
       <img src="assets/images/screens/splash_screen.png" alt="Splash Screen" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Splash Screen</p>
@@ -75,7 +74,6 @@ Our comprehensive documentation includes:
       <img src="assets/images/screens/settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Settings</p>
     </div>
-
   </div>
 </div>
 
