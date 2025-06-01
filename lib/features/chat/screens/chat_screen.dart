@@ -6,6 +6,7 @@ import '../../../services/firebase_service.dart';
 import '../../../services/notification_service.dart';
 import '../../user/models/app_user.dart';
 import '../models/message.dart';
+import '../../../core/utils/animated_background.dart';
 
 class ChatScreen extends StatefulWidget {
   final AppUser otherUser;
@@ -262,58 +263,73 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            // Messages list
-            Expanded(
-              child: StreamBuilder<List<Message>>(
-                stream: _firebaseService.getMessages(
-                  _currentUserId!,
-                  widget.otherUser.uid,
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    );
-                  }
-
-                  final messages = snapshot.data ?? [];
-
-                  if (messages.isEmpty) {
-                    return _buildEmptyChat();
-                  }
-
-                  // Check for new messages and show notifications
-                  _checkForNewMessages(messages);
-
-                  // Mark messages as seen
-                  for (final message in messages) {
-                    if (message.receiverId == _currentUserId && !message.isSeen) {
-                      _firebaseService.markMessageAsSeen(message.id);
-                    }
-                  }
-
-                  return ListView.builder(
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final isMe = message.senderId == _currentUserId;
-
-                      return _buildMessageBubble(message, isMe);
-                    },
-                  );
-                },
-              ),
+            // Add the animated background
+            AnimatedParticlesBackground(
+              colors: [
+                Theme.of(context).primaryColor,
+                Theme.of(context).colorScheme.secondary,
+                Colors.blue.shade300,
+              ],
+              numberOfParticles: 30, // Fewer particles than login screen
+              animateGradient: true,
             ),
-            // Message input
-            _buildMessageInput(),
+            // Content
+            Column(
+              children: [
+                // Messages list
+                Expanded(
+                  child: StreamBuilder<List<Message>>(
+                    stream: _firebaseService.getMessages(
+                      _currentUserId!,
+                      widget.otherUser.uid,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Error: ${snapshot.error}'),
+                        );
+                      }
+
+                      final messages = snapshot.data ?? [];
+
+                      if (messages.isEmpty) {
+                        return _buildEmptyChat();
+                      }
+
+                      // Check for new messages and show notifications
+                      _checkForNewMessages(messages);
+
+                      // Mark messages as seen
+                      for (final message in messages) {
+                        if (message.receiverId == _currentUserId && !message.isSeen) {
+                          _firebaseService.markMessageAsSeen(message.id);
+                        }
+                      }
+
+                      return ListView.builder(
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          final isMe = message.senderId == _currentUserId;
+
+                          return _buildMessageBubble(message, isMe);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                // Message input
+                _buildMessageInput(),
+              ],
+            ),
           ],
         ),
       ),
@@ -380,8 +396,8 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isMe
-                  ? Theme.of(context).primaryColor
-                  : Theme.of(context).cardColor,
+                  ? Theme.of(context).primaryColor.withOpacity(0.9)
+                  : Colors.white.withOpacity(0.9),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(20),
                 topRight: const Radius.circular(20),
@@ -390,44 +406,41 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Replace Text widget with RichText to support emoji styling
                 RichText(
                   text: TextSpan(
                     children: _getStyledTextSpans(
                       message.content,
-                      isMe ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
+                      isMe ? Colors.white : Colors.black87,
                     ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       _formatTimeForMessage(message.timestamp),
                       style: TextStyle(
                         fontSize: 10,
-                        color: isMe ? Colors.white70 : Colors.grey,
+                        color: isMe ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    if (isMe)
-                      Icon(
-                        message.isSeen
-                            ? Icons.done_all
-                            : (message.isDelivered ? Icons.done : Icons.access_time),
-                        size: 12,
-                        color: message.isSeen ? Colors.blue[100] : Colors.white70,
-                      ),
+                    if (isMe) Icon(
+                      message.isSeen ? Icons.done_all : (message.isDelivered ? Icons.done : Icons.access_time),
+                      size: 12,
+                      color: message.isSeen ? Colors.white70 : Colors.white54,
+                    ),
                   ],
                 ),
               ],
@@ -445,14 +458,20 @@ class _ChatScreenState extends State<ChatScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
+            color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
               ),
             ],
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withOpacity(0.3),
+                width: 0.5,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -460,19 +479,28 @@ class _ChatScreenState extends State<ChatScreen> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor.withOpacity(0.5),
+                    color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: _isTyping 
-                          ? Theme.of(context).primaryColor.withOpacity(0.5) 
-                          : Colors.transparent,
+                          ? Theme.of(context).primaryColor.withOpacity(0.7) 
+                          : Colors.white.withOpacity(0.3),
+                      width: 1.5,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _messageController,
                     focusNode: _messageFocusNode,
                     decoration: InputDecoration(
                       hintText: 'Type a message',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -502,7 +530,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       });
                     },
                     onSubmitted: (_) => _sendMessage(),
-                    style: GoogleFonts.notoSans(),
+                    style: GoogleFonts.notoSans(color: Colors.black),
                   ),
                 ),
               ),
@@ -518,8 +546,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       : Colors.grey[400],
                   boxShadow: _isTyping ? [
                     BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.4),
-                      blurRadius: 8,
+                      color: Theme.of(context).primaryColor.withOpacity(0.6),
+                      blurRadius: 12,
                       spreadRadius: 2,
                     )
                   ] : null,
@@ -536,8 +564,18 @@ class _ChatScreenState extends State<ChatScreen> {
         // Emoji Picker
         Offstage(
           offstage: !_isEmojiPickerVisible,
-          child: SizedBox(
+          child: Container(
             height: 250,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
             child: EmojiPicker(
               onEmojiSelected: _onEmojiSelected,
               textEditingController: _messageController,
@@ -598,63 +636,85 @@ class _ChatScreenState extends State<ChatScreen> {
             width: 150,
             height: 150,
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor.withOpacity(0.5),
+              color: Colors.white.withOpacity(0.8),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 5,
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 15,
+                  spreadRadius: 2,
                 ),
               ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.6),
+                width: 4,
+              ),
             ),
             child: Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: Theme.of(context).primaryColor.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No messages yet',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
               color: Theme.of(context).primaryColor,
             ),
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'Send a message to start the conversation with ${widget.otherUser.username}',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 16,
-              ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () {
-              // Scroll to message input and focus it
-              _messageController.clear();
-              FocusScope.of(context).requestFocus(FocusNode());
-              // Add slight delay before focusing
-              Future.delayed(const Duration(milliseconds: 300), () {
-                FocusScope.of(context).requestFocus(FocusNode());
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            child: const Text(
-              'Start Conversation',
-              style: TextStyle(fontSize: 16),
+            child: Column(
+              children: [
+                Text(
+                  'No messages yet',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Text(
+                    'Send a message to start the conversation with ${widget.otherUser.username}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // Scroll to message input and focus it
+                    _messageController.clear();
+                    FocusScope.of(context).requestFocus(_messageFocusNode);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    backgroundColor: Theme.of(context).primaryColor,
+                    elevation: 5,
+                    shadowColor: Theme.of(context).primaryColor.withOpacity(0.5),
+                  ),
+                  child: const Text(
+                    'Start Conversation',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
             ),
           ),
         ],
