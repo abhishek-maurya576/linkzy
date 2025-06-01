@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#303030",
     "theme_color": "#1565C0",
-    "description": "A real-time 1-on-1 chat application with a beautiful UI and interactive animations.",
+    "description": "A real-time 1-on-1 chat application",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

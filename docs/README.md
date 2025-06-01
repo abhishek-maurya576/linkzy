@@ -1,23 +1,31 @@
-# Linkzy - Real-time Chat Application
+# Linkzy
 
-![Linkzy Logo](../assets/images/linkzy_icon.png)
-
-## Overview
-
-Linkzy is a modern, real-time 1-on-1 chat application built using Flutter and Firebase. It features a beautiful UI with interactive animations and provides a seamless messaging experience across multiple platforms.
+A real-time 1-on-1 chat application using Flutter with a beautiful UI and interactive animations.
 
 ## Features
 
-- **Real-time Messaging**: Instant message delivery with typing indicators
-- **User Authentication**: Secure login and registration with Firebase Auth
-- **User Profiles**: Customizable user profiles with display names, usernames, and profile pictures
-- **Display Name System**: Flexible identification with real names and usernames
-- **Contacts Management**: Add users to contacts with custom contact names
-- **Message Status**: Read receipts and delivery confirmations
-- **Responsive Design**: Works on mobile, web, and desktop platforms
-- **Dark Mode Support**: UI adapts to system theme preferences
-- **Search Functionality**: Find users easily
-- **Message Notifications**: Sound and visual alerts for new messages
+- Real-time messaging
+- User authentication
+- Profile customization
+- Message notifications
+- User blocking capabilities
+- Animated chat backgrounds
+- Dark and light theme support
+
+## Live Demo
+
+Visit the live demo at [https://abhishek-maurya576.github.io/linkzy/](https://abhishek-maurya576.github.io/linkzy/)
+
+## Screenshots
+
+![Chat Screen](images/screens/chat_screen.png)
+![Profile Screen](images/screens/profile_screen.png)
+
+## Version History
+
+- v1.2.0 - Added user blocking features and profile editing
+- v1.1.0 - Added animated chat backgrounds and dark mode
+- v1.0.0 - Initial release with basic chat functionality
 
 ## Documentation Index
 
@@ -35,25 +43,6 @@ Linkzy is a modern, real-time 1-on-1 chat application built using Flutter and Fi
 - **Database**: Cloud Firestore
 - **Storage**: Firebase Storage
 - **Messaging**: Firebase Cloud Messaging
-
-## Screenshots
-
-<div align="center">
-  <h3>Splash Screen</h3>
-  <img src="./images/screens/splash_screen.png" alt="Splash Screen" width="300"/>
-  
-  <h3>Chat Interface</h3>
-  <img src="./images/screens/chat_screen.png" alt="Chat Interface" width="300"/>
-  
-  <h3>User Conversation</h3>
-  <img src="./images/screens/tow_user_chat.png" alt="User Conversation" width="300"/>
-  
-  <h3>User Search</h3>
-  <img src="./images/screens/search_user.png" alt="User Search" width="300"/>
-  
-  <h3>Settings</h3>
-  <img src="./images/screens/settings.png" alt="Settings" width="300"/>
-</div>
 
 ## License
 
