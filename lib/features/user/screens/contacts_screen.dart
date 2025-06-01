@@ -74,11 +74,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
       context: context, 
       builder: (context) => AlertDialog(
         title: Text('Edit Contact Name'),
-        content: TextField(
-          controller: nameController,
-          decoration: InputDecoration(
-            hintText: 'Enter custom name',
-            labelText: 'Contact Name',
+        content: Material(
+          child: TextField(
+            controller: nameController,
+            decoration: InputDecoration(
+              hintText: 'Enter custom name',
+              labelText: 'Contact Name',
+            ),
           ),
         ),
         actions: [
