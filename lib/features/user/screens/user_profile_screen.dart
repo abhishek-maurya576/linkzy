@@ -626,10 +626,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               icon: Icons.edit,
               title: 'Edit Profile',
               onTap: () {
-                // Navigate to edit profile screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Edit Profile feature coming soon')),
-                );
+                _showEditProfileOptions();
               },
             ),
             _buildActionCard(
@@ -646,6 +643,68 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 }
               },
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEditProfileOptions() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Change Profile Picture'),
+              onTap: () {
+                Navigator.pop(context);
+                _showProfilePictureOptions();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Change Display Name'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditDisplayNameDialog();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.alternate_email),
+              title: const Text('Change Username'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditUsernameDialog();
+              },
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

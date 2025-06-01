@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../features/user/screens/user_profile_screen.dart';
+import '../../../core/constants/app_constants.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -104,6 +106,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 24),
         _buildSectionTitle('Account'),
         _buildSettingCardWithAction(
+          title: 'Edit Profile',
+          subtitle: 'Update your name, username and photo',
+          icon: Icons.person,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+            );
+          },
+        ),
+        _buildSettingCardWithAction(
           title: 'Change Password',
           subtitle: 'Update your login credentials',
           icon: Icons.lock,
@@ -134,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildSectionTitle('About'),
         _buildSettingCard(
           title: 'App Version',
-          subtitle: '1.0.0',
+          subtitle: AppConstants.appVersion,
           icon: Icons.info_outline,
           trailing: const SizedBox(), // Empty widget as trailing
         ),
