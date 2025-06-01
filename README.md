@@ -47,6 +47,7 @@ Our comprehensive documentation includes:
 - [Firebase Setup](docs/FIREBASE_SETUP.md)
 
 ## App Screenshots
+
 <div align="center">
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; max-width: 1000px; margin: auto;">
     
