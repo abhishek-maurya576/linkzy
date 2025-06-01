@@ -6,6 +6,20 @@
 
 A modern real-time 1-on-1 chat application built with Flutter and Firebase, featuring a beautiful UI with interactive animations.
 
+<div align="center">
+
+<!-- ✨ Paste badges below this line ✨ -->
+![Repo Size](https://img.shields.io/github/repo-size/abhishek-maurya576/linkzy)
+![Stars](https://img.shields.io/github/stars/abhishek-maurya576/linkzy?style=social)
+![Forks](https://img.shields.io/github/forks/abhishek-maurya576/linkzy?style=social)
+![Issues](https://img.shields.io/github/issues/abhishek-maurya576/linkzy)
+![License](https://img.shields.io/github/license/abhishek-maurya576/linkzy)
+![Last Commit](https://img.shields.io/github/last-commit/abhishek-maurya576/linkzy)
+![Made with Flutter](https://img.shields.io/badge/Made%20with-Flutter-blue?logo=flutter)
+![Open to Contributions](https://img.shields.io/badge/Open%20to-Contributions-brightgreen)
+
+</div>
+
 ## Features
 
 - **Real-time messaging** with instant delivery and read receipts
