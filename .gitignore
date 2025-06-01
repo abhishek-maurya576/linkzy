@@ -36,7 +36,6 @@ migrate_working_dir/
 build/
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Symbolication related
 app.*.symbols
@@ -53,6 +52,22 @@ app.*.map.json
 google-services.json
 GoogleService-Info.plist
 firebase_options.dart
+lib/firebase_options.dart
+*.keystore
+key.properties
+
+# Local deployment scripts
+*.bat
+deploy_firebase_rules.bat
+
+# Secrets and configuration
+.env*
+.secret*
+secrets.json
+*secrets*
+*config*.json
+*credentials*.json
+*key*.json
 
 # Coverage
 coverage/
@@ -143,3 +158,4 @@ docs/api/
 *.p8
 *.pem
 *.cer
+*.jks

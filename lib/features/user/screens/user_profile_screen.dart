@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../services/firebase_service.dart';
 import '../models/app_user.dart';
+import '../../../core/utils/validators.dart';
 import 'avatar_selection_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -14,8 +15,14 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final _firebaseService = FirebaseService();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _displayNameController = TextEditingController();
   bool _isLoading = true;
   bool _isUploadingImage = false;
+  bool _isUpdatingUsername = false;
+  bool _isUpdatingDisplayName = false;
+  bool _isUsernameAvailable = true;
+  bool _isCheckingUsername = false;
   AppUser? _currentUser;
   String? _errorMessage;
 
@@ -23,6 +30,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+  }
+  
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _displayNameController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCurrentUser() async {
@@ -163,6 +177,267 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
     }
   }
+  
+  Future<void> _showEditUsernameDialog() async {
+    if (_currentUser == null) return;
+    
+    _usernameController.text = _currentUser!.username;
+    _isUsernameAvailable = true;
+    _isCheckingUsername = false;
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Username'),
+        content: TextField(
+          controller: _usernameController,
+          decoration: InputDecoration(
+            labelText: 'Username',
+            hintText: 'Enter your new username',
+            errorText: !_isUsernameAvailable ? 'Username already taken' : null,
+            suffixIcon: _isCheckingUsername
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : (_usernameController.text.isNotEmpty && _isUsernameAvailable
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null),
+          ),
+          onChanged: (_) {
+            setState(() {
+              _isUsernameAvailable = true;
+            });
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: _isUpdatingUsername ? null : () => _updateUsername(context),
+            child: _isUpdatingUsername
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEditDisplayNameDialog() async {
+    if (_currentUser == null) return;
+    
+    _displayNameController.text = _currentUser!.displayName;
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Display Name'),
+        content: TextField(
+          controller: _displayNameController,
+          decoration: const InputDecoration(
+            labelText: 'Full Name',
+            hintText: 'Enter your full name',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: _isUpdatingDisplayName ? null : () => _updateDisplayName(context),
+            child: _isUpdatingDisplayName
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _checkUsernameAvailability() async {
+    final username = _usernameController.text.trim();
+    if (username.isEmpty || username.length < 3) {
+      return;
+    }
+    
+    // Skip check if username hasn't changed
+    if (_currentUser != null && username == _currentUser!.username) {
+      setState(() {
+        _isUsernameAvailable = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+    });
+
+    try {
+      final isAvailable = await _firebaseService.isUsernameAvailable(username);
+      
+      if (mounted) {
+        setState(() {
+          _isUsernameAvailable = isAvailable;
+          _isCheckingUsername = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingUsername = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking username: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _updateUsername(BuildContext dialogContext) async {
+    final username = _usernameController.text.trim();
+    
+    // Validate username
+    final error = Validators.validateUsername(username);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+      return;
+    }
+    
+    // Skip update if username hasn't changed
+    if (_currentUser != null && username == _currentUser!.username) {
+      Navigator.pop(dialogContext);
+      return;
+    }
+    
+    setState(() {
+      _isUpdatingUsername = true;
+    });
+    
+    try {
+      // Check availability one more time
+      final isAvailable = await _firebaseService.isUsernameAvailable(username);
+      if (!isAvailable) {
+        setState(() {
+          _isUsernameAvailable = false;
+          _isUpdatingUsername = false;
+        });
+        return;
+      }
+      
+      // Update username
+      if (_currentUser != null) {
+        final updatedUser = _currentUser!.copyWith(username: username);
+        await _firebaseService.createUserProfile(updatedUser);
+        
+        // Close dialog and reload profile
+        if (mounted) {
+          Navigator.pop(dialogContext);
+          await _loadCurrentUser();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Username updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update username: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingUsername = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateDisplayName(BuildContext dialogContext) async {
+    final displayName = _displayNameController.text.trim();
+    
+    // Validate display name
+    if (displayName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your name')),
+      );
+      return;
+    }
+    
+    // Skip update if display name hasn't changed
+    if (_currentUser != null && displayName == _currentUser!.displayName) {
+      Navigator.pop(dialogContext);
+      return;
+    }
+    
+    setState(() {
+      _isUpdatingDisplayName = true;
+    });
+    
+    try {
+      // Update display name
+      if (_currentUser != null) {
+        final updatedUser = _currentUser!.copyWith(displayName: displayName);
+        await _firebaseService.createUserProfile(updatedUser);
+        
+        // Close dialog and reload profile
+        if (mounted) {
+          Navigator.pop(dialogContext);
+          await _loadCurrentUser();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Display name updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update display name: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingDisplayName = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -292,13 +567,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            // Username
-            Text(
-              _currentUser!.username,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            // Display name with edit option
+            if (_currentUser!.displayName.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _currentUser!.displayName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: _showEditDisplayNameDialog,
+                    tooltip: 'Edit Display Name',
+                  ),
+                ],
               ),
+              const SizedBox(height: 8),
+            ],
+            // Username with edit option
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '@${_currentUser!.username}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 18),
+                  onPressed: _showEditUsernameDialog,
+                  tooltip: 'Edit Username',
+                  iconSize: 18,
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             // Email

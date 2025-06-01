@@ -19,6 +19,23 @@ A modern real-time 1-on-1 chat application built with Flutter and Firebase, feat
 
 For detailed information on setting up and using Linkzy, please refer to our [documentation](docs/index.md).
 
+### Setting Up Firebase Configuration
+
+This project requires Firebase configuration that isn't included in the repository for security reasons:
+
+1. Create a Firebase project at [firebase.google.com](https://firebase.google.com/)
+2. Register your app (Android, iOS, Web) in the Firebase console
+3. Download the configuration files:
+   - `google-services.json` for Android (place in `android/app/`)
+   - `GoogleService-Info.plist` for iOS (add to your Xcode project)
+4. Copy the example Firebase options file:
+   ```bash
+   cp lib/firebase_options.example.dart lib/firebase_options.dart
+   ```
+5. Update `firebase_options.dart` with your Firebase project's values
+
+See [Firebase Setup](docs/FIREBASE_SETUP.md#securing-firebase-configuration) for more detailed instructions.
+
 ## Documentation
 
 Our comprehensive documentation includes:
@@ -30,29 +47,34 @@ Our comprehensive documentation includes:
 - [Firebase Setup](docs/FIREBASE_SETUP.md)
 
 ## App Screenshots
-
 <div align="center">
-  <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
-    <div>
-      <img src="assets/images/screens/splash_screen.png" alt="Splash Screen" width="200"/>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; max-width: 1000px; margin: auto;">
+    
+    <div style="text-align: center;">
+      <img src="assets/images/screens/splash_screen.png" alt="Splash Screen" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Splash Screen</p>
     </div>
-    <div>
-      <img src="assets/images/screens/chat_screen.png" alt="Chat Interface" width="200"/>
+
+    <div style="text-align: center;">
+      <img src="assets/images/screens/chat_screen.png" alt="Chat Interface" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Chat Interface</p>
     </div>
-    <div>
-      <img src="assets/images/screens/tow_user_chat.png" alt="Conversation" width="200"/>
+
+    <div style="text-align: center;">
+      <img src="assets/images/screens/tow_user_chat.png" alt="Conversation" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>User Conversation</p>
     </div>
-    <div>
-      <img src="assets/images/screens/search_user.png" alt="User Search" width="200"/>
+
+    <div style="text-align: center;">
+      <img src="assets/images/screens/search_user.png" alt="User Search" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Search for Users</p>
     </div>
-    <div>
-      <img src="assets/images/screens/settings.png" alt="Settings" width="200"/>
+
+    <div style="text-align: center;">
+      <img src="assets/images/screens/settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Settings</p>
     </div>
+
   </div>
 </div>
 

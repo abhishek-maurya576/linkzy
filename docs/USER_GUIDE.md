@@ -42,7 +42,8 @@ Linkzy works on the following platforms:
 3. Enter your email address and create a password
 4. Tap "Register"
 5. Complete your profile by:
-   - Adding a username
+   - Adding a full name (display name)
+   - Creating a username
    - Uploading a profile picture (optional) or selecting an avatar
    - Tap "Continue"
 6. You're now ready to use Linkzy!
@@ -53,6 +54,7 @@ Linkzy works on the following platforms:
 2. Enter your email and password
 3. Tap "Login"
 4. If you've forgotten your password, tap "Forgot Password?" and follow the instructions sent to your email
+5. If you're a new user logging in for the first time, you'll be prompted to set up your profile with a full name and username
 
 ## Navigating the App
 
@@ -122,6 +124,7 @@ When you receive a new message, Linkzy will alert you with:
 
 1. Tap on the "Profile" tab
 2. Your profile information will be displayed, including:
+   - Full name (display name)
    - Username
    - Profile picture or avatar
    - Email address
@@ -132,6 +135,7 @@ When you receive a new message, Linkzy will alert you with:
 2. Tap "Edit Profile"
 3. Make your changes:
    - Tap your profile picture to change it
+   - Edit your display name (full name)
    - Edit your username
 4. Tap "Save" to update your profile
 

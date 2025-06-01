@@ -14,12 +14,14 @@ This document outlines the features and functionality of the Linkzy chat applica
 
 ### User Profiles
 
-- **Profile Creation**: Set username and profile picture during onboarding
-- **Profile Editing**: Update username, email, and profile picture
+- **Profile Creation**: Set username, display name and profile picture during onboarding
+- **Profile Editing**: Update username, display name, email, and profile picture
+- **Display Name**: Set and manage your real name or preferred display name
+- **Username Uniqueness**: Ensures all usernames are unique across the platform
+- **Name Priority**: Custom contact name > display name > username for identification
 - **Predefined Avatars**: Choose from a collection of predefined avatar images
 - **Custom Profile Pictures**: Upload your own profile picture from your device
 - **Profile Viewing**: View other users' profiles
-- **Username Uniqueness**: Ensures all usernames are unique across the platform
 
 ### Messaging
 

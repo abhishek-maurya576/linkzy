@@ -78,6 +78,7 @@ class AppUser {
   final String uid;
   final String email;
   final String username;
+  final String displayName;
   final String profilePicUrl;
   
   // Constructor and methods...

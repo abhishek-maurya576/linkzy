@@ -35,5 +35,34 @@ service cloud.firestore {
                     request.resource.data.diff(resource.data).affectedKeys()
                       .hasOnly(['isDelivered', 'isSeen']);
     }
+    
+    // Contacts collection rules
+    match /contacts/{contactId} {
+      // Allow users to read their own contacts
+      allow read: if request.auth != null && 
+                   resource.data.userId == request.auth.uid;
+      
+      // Allow users to create their own contacts
+      allow create: if request.auth != null && 
+                     request.resource.data.userId == request.auth.uid &&
+                     validContactData();
+      
+      // Allow users to update their own contacts
+      allow update: if request.auth != null && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Allow users to delete their own contacts
+      allow delete: if request.auth != null && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Validate contact data
+      function validContactData() {
+        return request.resource.data.keys().hasAll(['id', 'userId', 'contactId', 'createdAt']) &&
+               request.resource.data.userId == request.auth.uid &&
+               request.resource.data.id is string &&
+               request.resource.data.contactId is string &&
+               request.resource.data.createdAt is string;
+      }
+    }
   }
 } 

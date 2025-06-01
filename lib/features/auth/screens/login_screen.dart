@@ -18,12 +18,18 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _displayNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _usernameFormKey = GlobalKey<FormState>();
   final _firebaseService = FirebaseService();
   
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   bool _showDemoInfo = false;
+  bool _showUsernameDialog = false;
+  bool _isCheckingUsername = false;
+  bool _isUsernameAvailable = true;
   
   @override
   void initState() {
@@ -40,7 +46,44 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _usernameController.dispose();
+    _displayNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUsernameAvailability() async {
+    final username = _usernameController.text.trim();
+    if (username.isEmpty || username.length < 3) {
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+    });
+
+    try {
+      final isAvailable = await _firebaseService.isUsernameAvailable(username);
+      
+      if (mounted) {
+        setState(() {
+          _isUsernameAvailable = isAvailable;
+          _isCheckingUsername = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingUsername = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking username: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _login() async {
@@ -59,19 +102,16 @@ class _LoginScreenState extends State<LoginScreen>
       // Login with Firebase Authentication
       await _firebaseService.loginUser(email, password);
 
-      // Check if we have a user profile, create one if not
+      // Check if we have a user profile, if not, we'll prompt for username
       final user = await _firebaseService.getCurrentUserProfile();
       if (user == null) {
-        // This might happen if the user was created via authentication but profile wasn't created
-        // Extract username from email for fallback
-        final username = email.split('@')[0];
-        await _firebaseService.createUserProfile(
-          AppUser(
-            uid: _firebaseService.currentUserId!,
-            email: email,
-            username: username,
-          ),
-        );
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _showUsernameDialog = true;
+          });
+        }
+        return;
       }
 
       // Show success message
@@ -88,6 +128,68 @@ class _LoginScreenState extends State<LoginScreen>
       // Show error message
       Fluttertoast.showToast(
         msg: 'Login failed: ${e.toString()}',
+        backgroundColor: Colors.red,
+      );
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  
+  Future<void> _createUserProfile() async {
+    if (!_usernameFormKey.currentState!.validate()) {
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final username = _usernameController.text.trim();
+      final displayName = _displayNameController.text.trim();
+      
+      // Check availability one more time
+      final isAvailable = await _firebaseService.isUsernameAvailable(username);
+      if (!isAvailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Username already taken. Please choose another one.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+          _isUsernameAvailable = false;
+        });
+        return;
+      }
+      
+      // Create user profile
+      await _firebaseService.createUserProfile(
+        AppUser(
+          uid: _firebaseService.currentUserId!,
+          email: _emailController.text.trim(),
+          username: username,
+          displayName: displayName,
+        ),
+      );
+      
+      // Show success message
+      Fluttertoast.showToast(
+        msg: 'Profile created successfully!',
+        backgroundColor: Colors.green,
+      );
+      
+      // Navigate to home screen
+      if (mounted) {
+        Navigator.of(context).pop(); // Close the dialog
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      // Show error message
+      Fluttertoast.showToast(
+        msg: 'Failed to create profile: ${e.toString()}',
         backgroundColor: Colors.red,
       );
     } finally {
@@ -275,7 +377,115 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
+          if (_showUsernameDialog) _buildUsernameDialog(),
         ],
+      ),
+    );
+  }
+  
+  Widget _buildUsernameDialog() {
+    return Container(
+      height: double.infinity,
+      width: double.infinity,
+      color: Colors.black.withOpacity(0.7),
+      child: Center(
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Form(
+              key: _usernameFormKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Complete Your Profile',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _displayNameController,
+                    hint: 'Full Name',
+                    prefixIcon: Icons.person_outline,
+                    keyboardType: TextInputType.name,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _usernameController,
+                    hint: 'Username',
+                    prefixIcon: Icons.person,
+                    onChanged: (_) {
+                      setState(() {
+                        _isUsernameAvailable = true;
+                      });
+                    },
+                    onFieldSubmitted: (_) => _checkUsernameAvailability(),
+                    validator: (value) {
+                      final error = Validators.validateUsername(value);
+                      if (error != null) {
+                        return error;
+                      }
+                      if (!_isUsernameAvailable) {
+                        return 'Username already taken';
+                      }
+                      return null;
+                    },
+                    suffixIcon: _isCheckingUsername
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : (_usernameController.text.isNotEmpty && _isUsernameAvailable
+                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            : null),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _isLoading ? null : () async {
+                          await _firebaseService.signOut();
+                          if (mounted) {
+                            setState(() {
+                              _showUsernameDialog = false;
+                            });
+                          }
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _createUserProfile,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Create Profile'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -241,6 +241,7 @@ class ChatListItem extends StatelessWidget {
     final messagePreview = isMyMessage 
         ? 'You: ${latestMessage.content}'
         : latestMessage.content;
+    final bool hasDisplayName = user.displayName.isNotEmpty;
     
     // Format the timestamp
     final now = DateTime.now();
@@ -321,13 +322,33 @@ class ChatListItem extends StatelessWidget {
                         ),
                       ),
               ),
-              title: Text(
-                user.username,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              title: hasDisplayName ? 
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.displayName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      '@${user.username}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ) :
+                Text(
+                  user.username,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
-              ),
               subtitle: Text(
                 messagePreview,
                 maxLines: 1,

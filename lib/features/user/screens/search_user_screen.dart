@@ -17,6 +17,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String? _currentUserId;
+  Map<String, bool> _savedContactsStatus = {};
 
   @override
   void initState() {
@@ -47,6 +48,11 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       // Filter out the current user from search results
       final filteredResults = results.where((user) => user.uid != _currentUserId).toList();
       
+      // Check if users are already in contacts
+      for (var user in filteredResults) {
+        _savedContactsStatus[user.uid] = await _firebaseService.isUserInContacts(user.uid);
+      }
+      
       setState(() {
         _searchResults = filteredResults;
       });
@@ -58,6 +64,38 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _addToContacts(AppUser user) async {
+    if (_currentUserId == null) return;
+    
+    try {
+      setState(() {
+        // Show optimistic UI update
+        _savedContactsStatus[user.uid] = true;
+      });
+      
+      await _firebaseService.addContact(user.uid);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added ${user.username} to contacts'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Revert optimistic update on error
+      setState(() {
+        _savedContactsStatus[user.uid] = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to add contact: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -160,6 +198,9 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 
   Widget _buildUserItem(AppUser user) {
+    final bool isInContacts = _savedContactsStatus[user.uid] ?? false;
+    final bool hasDisplayName = user.displayName.isNotEmpty;
+    
     return Card(
       elevation: 1,
       margin: const EdgeInsets.only(bottom: 12),
@@ -184,22 +225,52 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                 )
               : null,
         ),
-        title: Text(
-          user.username,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(user.email),
-        trailing: ElevatedButton(
-          onPressed: () {
-            // Open chat with this user
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(otherUser: user),
+        title: hasDisplayName ? 
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.displayName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            );
-          },
-          child: const Text('Chat'),
+              Text(
+                '@${user.username}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ) :
+          Text(
+            user.username,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        subtitle: Text(user.email),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                isInContacts ? Icons.person : Icons.person_add_outlined,
+                color: isInContacts ? Colors.green : null,
+              ),
+              onPressed: isInContacts ? null : () => _addToContacts(user),
+              tooltip: isInContacts ? 'In Contacts' : 'Add to Contacts',
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Open chat with this user
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(otherUser: user),
+                  ),
+                );
+              },
+              child: const Text('Chat'),
+            ),
+          ],
         ),
       ),
     );

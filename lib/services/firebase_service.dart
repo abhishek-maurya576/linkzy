@@ -4,8 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../features/user/models/app_user.dart';
+import '../features/user/models/contact.dart';
 import '../features/chat/models/message.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:uuid/uuid.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -15,6 +17,7 @@ class FirebaseService {
   // Collections
   final String _usersCollection = 'users';
   final String _messagesCollection = 'messages';
+  final String _contactsCollection = 'contacts';
 
   // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;
@@ -436,6 +439,132 @@ class FirebaseService {
     } catch (e) {
       debugPrint('Error getting latest message: ${e.toString()}');
       return Stream.value(null);
+    }
+  }
+
+  // Contact management methods
+  Future<Contact> addContact(String contactUserId, {String customName = ''}) async {
+    try {
+      final currentUid = currentUserId;
+      if (currentUid == null) {
+        throw Exception('You must be logged in to add contacts');
+      }
+
+      // Check if contact already exists
+      final existingContact = await _firestore
+          .collection(_contactsCollection)
+          .where('userId', isEqualTo: currentUid)
+          .where('contactId', isEqualTo: contactUserId)
+          .get();
+
+      if (existingContact.docs.isNotEmpty) {
+        throw Exception('This contact already exists in your contacts');
+      }
+
+      // Create new contact
+      final contactId = const Uuid().v4();
+      final contactData = Contact(
+        id: contactId,
+        userId: currentUid,
+        contactId: contactUserId,
+        contactName: customName,
+        createdAt: DateTime.now(),
+      );
+
+      await _firestore
+          .collection(_contactsCollection)
+          .doc(contactId)
+          .set(contactData.toMap());
+
+      return contactData;
+    } catch (e) {
+      throw Exception('Failed to add contact: ${e.toString()}');
+    }
+  }
+
+  Future<void> removeContact(String contactId) async {
+    try {
+      final currentUid = currentUserId;
+      if (currentUid == null) {
+        throw Exception('You must be logged in to remove contacts');
+      }
+
+      await _firestore
+          .collection(_contactsCollection)
+          .doc(contactId)
+          .delete();
+    } catch (e) {
+      throw Exception('Failed to remove contact: ${e.toString()}');
+    }
+  }
+
+  Future<void> updateContactName(String contactId, String newName) async {
+    try {
+      final currentUid = currentUserId;
+      if (currentUid == null) {
+        throw Exception('You must be logged in to update contacts');
+      }
+
+      await _firestore
+          .collection(_contactsCollection)
+          .doc(contactId)
+          .update({'contactName': newName});
+    } catch (e) {
+      throw Exception('Failed to update contact name: ${e.toString()}');
+    }
+  }
+
+  Stream<List<Contact>> getUserContacts(String userId) {
+    try {
+      return _firestore
+          .collection(_contactsCollection)
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) async {
+        final contacts = <Contact>[];
+        
+        for (var doc in snapshot.docs) {
+          final contactData = doc.data();
+          final contactId = contactData['contactId'] as String;
+          
+          // Fetch user details for each contact
+          final userDoc = await _firestore
+              .collection(_usersCollection)
+              .doc(contactId)
+              .get();
+          
+          if (userDoc.exists) {
+            final user = AppUser.fromMap(userDoc.data() as Map<String, dynamic>);
+            contacts.add(Contact.fromMap(contactData, user: user));
+          } else {
+            contacts.add(Contact.fromMap(contactData));
+          }
+        }
+        
+        return contacts;
+      });
+    } catch (e) {
+      debugPrint('Error getting user contacts: ${e.toString()}');
+      return Stream.value([]);
+    }
+  }
+
+  Future<bool> isUserInContacts(String contactUserId) async {
+    try {
+      final currentUid = currentUserId;
+      if (currentUid == null) return false;
+
+      final query = await _firestore
+          .collection(_contactsCollection)
+          .where('userId', isEqualTo: currentUid)
+          .where('contactId', isEqualTo: contactUserId)
+          .get();
+      
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking if user is in contacts: ${e.toString()}');
+      return false;
     }
   }
 } 

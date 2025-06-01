@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/firebase_service.dart';
 import '../../user/screens/search_user_screen.dart';
 import '../../user/screens/user_profile_screen.dart';
+import '../../user/screens/contacts_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'chat_list_screen.dart';
 
@@ -18,6 +19,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const ChatListScreen(),
+    const ContactsScreen(),
     const SearchUserScreen(),
     const UserProfileScreen(),
     const SettingsScreen(),
@@ -25,6 +27,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   final List<String> _titles = [
     'Chats',
+    'Contacts',
     'Search',
     'Profile',
     'Settings',
@@ -77,6 +80,11 @@ class HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.chat_bubble_outline),
               activeIcon: Icon(Icons.chat_bubble),
               label: 'Chats',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.contacts_outlined),
+              activeIcon: Icon(Icons.contacts),
+              label: 'Contacts',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.search),

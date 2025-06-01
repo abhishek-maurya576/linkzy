@@ -17,6 +17,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -32,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   @override
   void dispose() {
     _emailController.dispose();
+    _displayNameController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -104,6 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     try {
       final email = _emailController.text.trim();
+      final displayName = _displayNameController.text.trim();
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
 
@@ -121,6 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         uid: userId,
         email: email,
         username: username,
+        displayName: displayName,
       );
 
       await _firebaseService.createUserProfile(user);
@@ -186,6 +190,19 @@ class _RegisterScreenState extends State<RegisterScreen>
                         prefixIcon: Icons.email,
                         keyboardType: TextInputType.emailAddress,
                         validator: Validators.validateEmail,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _displayNameController,
+                        hint: 'Full Name',
+                        prefixIcon: Icons.person_outline,
+                        keyboardType: TextInputType.name,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(

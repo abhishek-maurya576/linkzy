@@ -197,7 +197,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentUserId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.otherUser.username),
+          title: Text(widget.otherUser.displayName.isNotEmpty ? 
+              widget.otherUser.displayName : widget.otherUser.username),
         ),
         body: const Center(
           child: Text('Please log in to send messages'),
@@ -221,7 +222,31 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               _buildUserAvatar(context),
               const SizedBox(width: 12),
-              Text(widget.otherUser.username),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.otherUser.displayName.isNotEmpty ? 
+                        widget.otherUser.displayName : widget.otherUser.username,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.otherUser.displayName.isNotEmpty)
+                      Text(
+                        '@${widget.otherUser.username}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [

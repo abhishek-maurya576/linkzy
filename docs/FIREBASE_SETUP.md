@@ -89,7 +89,9 @@ service cloud.firestore {
         return request.resource.data.keys().hasAll(['uid', 'email', 'username']) &&
                request.resource.data.uid == userId &&
                request.resource.data.email is string &&
-               request.resource.data.username is string;
+               request.resource.data.username is string &&
+               (request.resource.data.displayName == null || 
+                request.resource.data.displayName is string);
       }
     }
     
@@ -109,6 +111,35 @@ service cloud.firestore {
                     resource.data.receiverId == request.auth.uid &&
                     request.resource.data.diff(resource.data).affectedKeys()
                       .hasOnly(['isDelivered', 'isSeen']);
+    }
+    
+    // Contacts collection rules
+    match /contacts/{contactId} {
+      // Allow users to read their own contacts
+      allow read: if request.auth != null && 
+                  resource.data.ownerUserId == request.auth.uid;
+      
+      // Allow users to create contacts where they are the owner
+      allow create: if request.auth != null && 
+                    request.resource.data.ownerUserId == request.auth.uid &&
+                    validContactData();
+      
+      // Allow users to update their contacts
+      allow update: if request.auth != null &&
+                    resource.data.ownerUserId == request.auth.uid;
+      
+      // Allow users to delete their contacts
+      allow delete: if request.auth != null &&
+                    resource.data.ownerUserId == request.auth.uid;
+      
+      // Validate contact data
+      function validContactData() {
+        return request.resource.data.keys().hasAll(['ownerUserId', 'contactUserId']) &&
+               request.resource.data.ownerUserId is string &&
+               request.resource.data.contactUserId is string &&
+               (request.resource.data.contactName == null || 
+                request.resource.data.contactName is string);
+      }
     }
   }
 }
@@ -151,113 +182,60 @@ Create a file named `firestore.indexes.json` in your project root with the follo
         { "fieldPath": "receiverId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "contacts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUserId", "order": "ASCENDING" },
+        { "fieldPath": "contactUserId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
 }
 ```
 
-Deploy the indexes:
+## 10. Securing Firebase Configuration
+
+For security reasons, Firebase configuration files containing API keys and other sensitive information should not be committed to your repository. Follow these steps to handle Firebase configuration securely:
+
+### Setting up firebase_options.dart
+
+1. The `firebase_options.dart` file is excluded from git via the `.gitignore` file
+2. An example template `firebase_options.example.dart` is provided in the repository
+3. When setting up the project locally:
+   - Copy the example file: `cp lib/firebase_options.example.dart lib/firebase_options.dart`
+   - Update it with your own Firebase project credentials
+   - Never commit your actual `firebase_options.dart` file
+
+### Handling Google Services Files
+
+Similarly, the Android and iOS configuration files are excluded:
+- `google-services.json` for Android
+- `GoogleService-Info.plist` for iOS
+
+These files should be obtained from your Firebase console and added to your local project, but not committed to the repository.
+
+### Using Environment Variables (Alternative Approach)
+
+For CI/CD pipelines or deployment automation, consider using environment variables:
+
+```dart
+// Example of using environment variables instead of hardcoded values
+final firebaseOptions = FirebaseOptions(
+  apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+  appId: const String.fromEnvironment('FIREBASE_APP_ID'),
+  messagingSenderId: const String.fromEnvironment('FIREBASE_SENDER_ID'),
+  projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+  // Other options...
+);
+```
+
+Then provide these during build:
 
 ```bash
-firebase deploy --only firestore:indexes
+flutter build apk --dart-define=FIREBASE_API_KEY=your_api_key ...
 ```
 
-## 6. Set Up Firebase Storage
-
-1. In the Firebase console, navigate to "Storage" from the left menu
-2. Click "Get Started"
-3. Select "Start in production mode"
-4. Choose a storage location close to your users
-
-### Storage Rules
-
-The default rules should be similar to:
-
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
-
-For better security, you can update the rules to:
-
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    // Profile picture storage
-    match /profile_pictures/{userId}.jpg {
-      // Anyone can read profile pictures
-      allow read: if request.auth != null;
-      // Only the owner can upload their profile picture
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
-
-## 7. Firebase Cloud Messaging (Optional)
-
-1. In the Firebase console, navigate to "Messaging" from the left menu
-2. Set up Cloud Messaging for your platforms:
-   - For Android: No additional setup needed if you've added `google-services.json`
-   - For iOS: Update your app capabilities in Xcode
-   - For Web: Add the Firebase Messaging web SDK
-
-## 8. Integrate with Flutter App
-
-Ensure your Flutter app has the necessary dependencies in `pubspec.yaml`:
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  firebase_core: ^3.13.1
-  firebase_auth: ^5.5.4
-  cloud_firestore: ^5.6.8
-  firebase_storage: ^12.4.6
-  firebase_messaging: ^15.2.6
-```
-
-## 9. Testing Your Firebase Setup
-
-1. Run your app and test Firebase services:
-
-```bash
-flutter run
-```
-
-2. Check the Firebase console to verify that data is being stored properly
-
-## Common Issues and Troubleshooting
-
-1. **Missing Google Services File**:
-   - Ensure `google-services.json` is placed in `android/app/`
-   - Ensure `GoogleService-Info.plist` is added to your Xcode project
-
-2. **Authentication Issues**:
-   - Verify the authentication providers are properly enabled
-   - Check user email verification settings
-
-3. **Firestore Access Denied**:
-   - Verify your security rules are deployed correctly
-   - Check that the queries match the rules' conditions
-
-4. **Storage Permission Issues**:
-   - Verify storage rules are deployed correctly
-   - Ensure the user is authenticated before uploading files
-
-5. **Index Errors**:
-   - If you see an error message about missing indexes, click the link in the error message to create the required index
-
-## Additional Resources
-
-- [Firebase Documentation](https://firebase.google.com/docs)
-- [FlutterFire Documentation](https://firebase.flutter.dev/docs/overview/)
-- [Firestore Rules Documentation](https://firebase.google.com/docs/firestore/security/get-started)
+This approach keeps sensitive data out of your codebase entirely.
