@@ -54,22 +54,18 @@ Our comprehensive documentation includes:
       <img src="assets/images/screens/splash_screen.png" alt="Splash Screen" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Splash Screen</p>
     </div>
-
     <div style="text-align: center;">
       <img src="assets/images/screens/chat_screen.png" alt="Chat Interface" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Chat Interface</p>
     </div>
-
     <div style="text-align: center;">
       <img src="assets/images/screens/tow_user_chat.png" alt="Conversation" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>User Conversation</p>
     </div>
-
     <div style="text-align: center;">
       <img src="assets/images/screens/search_user.png" alt="User Search" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Search for Users</p>
     </div>
-
     <div style="text-align: center;">
       <img src="assets/images/screens/settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Settings</p>
