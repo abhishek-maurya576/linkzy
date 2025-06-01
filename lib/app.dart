@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:provider/provider.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -9,6 +10,7 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/forgot_password_screen.dart';
 import 'features/chat/screens/home_screen.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'core/constants/app_constants.dart';
 
 // Handle background messages
@@ -93,18 +95,23 @@ class _LinkzyAppState extends State<LinkzyApp> {
       statusBarIconBrightness: Brightness.light,
     ));
     
-    return MaterialApp(
-      title: 'Linkzy',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      initialRoute: '/splash',
-      routes: {
-        '/splash': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/forgot-password': (context) => const ForgotPasswordScreen(),
-        '/home': (context) => const HomeScreen(),
-      },
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) => MaterialApp(
+          title: 'Linkzy',
+          debugShowCheckedModeBanner: false,
+          theme: themeProvider.themeData,
+          initialRoute: '/splash',
+          routes: {
+            '/splash': (context) => const SplashScreen(),
+            '/login': (context) => const LoginScreen(),
+            '/register': (context) => const RegisterScreen(),
+            '/forgot-password': (context) => const ForgotPasswordScreen(),
+            '/home': (context) => const HomeScreen(),
+          },
+        ),
+      ),
     );
   }
 }

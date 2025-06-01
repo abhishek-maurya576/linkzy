@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/notification_service.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -13,7 +15,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _firebaseService = FirebaseService();
   final _notificationService = NotificationService();
-  bool _isDarkMode = true;
   bool _areNotificationsEnabled = true;
   bool _isLoading = false;
 
@@ -32,7 +33,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       
       setState(() {
-        _isDarkMode = prefs.getBool('isDarkMode') ?? true;
         _areNotificationsEnabled = prefs.getBool('areNotificationsEnabled') ?? true;
       });
       
@@ -47,21 +47,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _saveSettings() async {
+  Future<void> _saveNotificationSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isDarkMode', _isDarkMode);
       await prefs.setBool('areNotificationsEnabled', _areNotificationsEnabled);
       
       // Apply notification settings
       _notificationService.toggleSound(_areNotificationsEnabled);
     } catch (e) {
-      debugPrint('Failed to save settings: $e');
+      debugPrint('Failed to save notification settings: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -76,13 +77,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: 'Switch between light and dark theme',
           icon: Icons.dark_mode,
           trailing: Switch(
-            value: _isDarkMode,
+            value: themeProvider.isDarkMode,
             onChanged: (value) {
-              setState(() {
-                _isDarkMode = value;
-              });
-              _saveSettings();
-              // In a real app, you'd also apply the theme change here
+              themeProvider.setDarkMode(value);
             },
           ),
         ),
@@ -99,14 +96,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _areNotificationsEnabled = value;
               });
-              _saveSettings();
+              _saveNotificationSettings();
             },
           ),
         ),
 
         const SizedBox(height: 24),
         _buildSectionTitle('Account'),
-        _buildSettingCard(
+        _buildSettingCardWithAction(
           title: 'Change Password',
           subtitle: 'Update your login credentials',
           icon: Icons.lock,
@@ -114,7 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Navigate to change password screen
           },
         ),
-        _buildSettingCard(
+        _buildSettingCardWithAction(
           title: 'Block List',
           subtitle: 'Manage blocked contacts',
           icon: Icons.block,
@@ -122,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Navigate to block list screen
           },
         ),
-        _buildSettingCard(
+        _buildSettingCardWithAction(
           title: 'Delete Account',
           subtitle: 'Permanently delete your account',
           icon: Icons.delete_forever,
@@ -139,16 +136,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: 'App Version',
           subtitle: '1.0.0',
           icon: Icons.info_outline,
+          trailing: const SizedBox(), // Empty widget as trailing
         ),
-        _buildSettingCard(
+        _buildSettingCardWithAction(
           title: 'Privacy Policy',
+          subtitle: 'Read our privacy policy',
           icon: Icons.policy,
           onTap: () {
             // Show privacy policy
           },
         ),
-        _buildSettingCard(
+        _buildSettingCardWithAction(
           title: 'Terms of Service',
+          subtitle: 'Read our terms of service',
           icon: Icons.description,
           onTap: () {
             // Show terms of service
@@ -160,12 +160,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
+          fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Theme.of(context).primaryColor,
+          color: Colors.grey,
         ),
       ),
     );
@@ -173,32 +174,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSettingCard({
     required String title,
-    String? subtitle,
+    required String subtitle,
     required IconData icon,
-    Color? iconColor,
-    Color? textColor,
-    Widget? trailing,
-    VoidCallback? onTap,
+    required Widget trailing,
   }) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Icon(icon, size: 28),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[500],
+          ),
+        ),
+        trailing: trailing,
+      ),
+    );
+  }
+  
+  Widget _buildSettingCardWithAction({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    Color? iconColor,
+    Color? textColor,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
         leading: Icon(
-          icon,
-          color: iconColor ?? Theme.of(context).iconTheme.color,
+          icon, 
+          size: 28,
+          color: iconColor,
         ),
         title: Text(
           title,
           style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
             color: textColor,
-            fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: textColor != null ? textColor.withOpacity(0.7) : Colors.grey[500],
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );
