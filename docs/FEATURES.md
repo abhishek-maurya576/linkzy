@@ -15,13 +15,17 @@ This document outlines the features and functionality of the Linkzy chat applica
 ### User Profiles
 
 - **Profile Creation**: Set username, display name and profile picture during onboarding
-- **Profile Editing**: Update username, display name, email, and profile picture
+- **Profile Editing**: Update username, display name, and profile picture
+- **Multiple Edit Entry Points**: Edit profile from both Profile tab and Settings
+- **Intuitive Edit Interface**: Modal bottom sheet with clear editing options
 - **Display Name**: Set and manage your real name or preferred display name
 - **Username Uniqueness**: Ensures all usernames are unique across the platform
 - **Name Priority**: Custom contact name > display name > username for identification
 - **Predefined Avatars**: Choose from a collection of predefined avatar images
 - **Custom Profile Pictures**: Upload your own profile picture from your device
 - **Profile Viewing**: View other users' profiles
+
+For a detailed guide on profile management, see the [User Guide](./USER_GUIDE.md#managing-your-profile).
 
 ### Messaging
 
@@ -76,9 +80,13 @@ The profile screen allows users to:
 
 The settings screen provides configuration options for:
 
-- **App Theme**: Toggle between light and dark mode
+- **Appearance**: Toggle between light and dark mode themes
 - **Notifications**: Configure notification preferences
-- **Privacy**: Set privacy preferences
+- **Account Management**: 
+  - Edit profile information
+  - Change password
+  - Manage blocked users
+  - Delete account
 - **Sign Out**: Log out of the account
 
 ## Technical Features

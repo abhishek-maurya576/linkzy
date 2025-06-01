@@ -131,18 +131,27 @@ When you receive a new message, Linkzy will alert you with:
 
 ### Editing Your Profile
 
+There are two ways to edit your profile:
+
+#### Option 1: From the Profile Tab
 1. Go to the "Profile" tab
-2. Tap "Edit Profile"
-3. Make your changes:
-   - Tap your profile picture to change it
-   - Edit your display name (full name)
-   - Edit your username
-4. Tap "Save" to update your profile
+2. Tap "Edit Profile" 
+3. In the edit profile panel that appears, choose what you want to edit:
+   - **Change Profile Picture**: Update your photo or avatar
+   - **Change Display Name**: Edit your full name
+   - **Change Username**: Edit your unique username
+4. Follow the prompts to make your changes
+
+#### Option 2: From Settings
+1. Go to the "Settings" tab
+2. Under "Account", tap "Edit Profile"
+3. You'll be taken to your profile page
+4. Tap "Edit Profile" and make your changes as described above
 
 ### Changing Your Profile Picture
 
 1. Go to the "Profile" tab
-2. Tap on your profile picture or the camera icon
+2. Tap "Edit Profile" or tap directly on your profile picture
 3. Choose from the following options:
    - **Choose from Gallery**: Upload a picture from your device
    - **Select Avatar**: Choose from predefined avatar images
@@ -156,11 +165,9 @@ When you receive a new message, Linkzy will alert you with:
 ### Theme Settings
 
 1. Go to the "Settings" tab
-2. Tap "Theme"
-3. Choose between:
-   - Light Mode
-   - Dark Mode
-   - System Default (follows device settings)
+2. Under "Appearance", toggle "Dark Mode" on or off to switch between:
+   - Light Mode (toggle off)
+   - Dark Mode (toggle on)
 
 ### Notification Preferences
 
@@ -175,9 +182,10 @@ When you receive a new message, Linkzy will alert you with:
 
 1. Go to the "Settings" tab
 2. Under "Account", you can:
-   - Change your password
-   - Update your email
-   - Delete your account
+   - **Edit Profile**: Update your name, username and photo
+   - **Change Password**: Update your login credentials
+   - **Block List**: Manage blocked users
+   - **Delete Account**: Permanently delete your account
 
 ### Logging Out
 
