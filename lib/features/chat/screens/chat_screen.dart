@@ -43,6 +43,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _currentUserId = _firebaseService.currentUserId;
     _messageFocusNode.addListener(_onFocusChange);
+    
+    // Add this to request focus when the chat screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_messageFocusNode);
+    });
   }
   
   @override
@@ -109,6 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onFocusChange() {
+    // Only update state if emoji picker is visible and we have focus
     if (_messageFocusNode.hasFocus && _isEmojiPickerVisible) {
       setState(() {
         _isEmojiPickerVisible = false;
@@ -117,9 +123,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onEmojiSelected(Category? category, Emoji emoji) {
-    setState(() {
-      _isTyping = _messageController.text.trim().isNotEmpty;
-    });
+    // Don't use setState just to update _isTyping
+    // We'll handle this in onChanged of the TextField instead
+    _isTyping = _messageController.text.trim().isNotEmpty;
   }
 
   void _toggleEmojiPicker() {
@@ -175,8 +181,23 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     try {
-      setState(() => _isTyping = false);
+      // Save the current focus state before modifying the text
+      final hadFocus = _messageFocusNode.hasFocus;
+      
+      // Update typing status and clear text without using setState
+      _isTyping = false;
       _messageController.clear();
+      
+      // Only update UI to show the sending state is complete
+      setState(() {});
+      
+      // Maintain focus if it was focused before
+      if (hadFocus) {
+        // Use a short delay to prevent keyboard flicker
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) _messageFocusNode.requestFocus();
+        });
+      }
       
       await _firebaseService.sendMessage(
         _currentUserId!,
@@ -525,9 +546,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     maxLines: null,
                     textInputAction: TextInputAction.send,
                     onChanged: (value) {
-                      setState(() {
-                        _isTyping = value.trim().isNotEmpty;
-                      });
+                      final newIsTyping = value.trim().isNotEmpty;
+                      // Only update state if typing status changes to avoid unnecessary rebuilds
+                      if (newIsTyping != _isTyping) {
+                        setState(() {
+                          _isTyping = newIsTyping;
+                        });
+                      }
                     },
                     onSubmitted: (_) => _sendMessage(),
                     style: GoogleFonts.notoSans(color: Colors.black),

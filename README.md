@@ -23,6 +23,7 @@ A modern real-time 1-on-1 chat application built with Flutter and Firebase, feat
 ## Features
 
 - **Real-time messaging** with instant delivery and read receipts
+- **Enhanced chat experience** with auto-focusing message input for rapid conversations
 - **User authentication** with email and password
 - **User profiles** with customizable usernames and profile pictures
 - **Responsive design** that works on mobile, web, and desktop platforms
