@@ -67,18 +67,9 @@ class NotificationService {
     // Play sound
     playNotificationSound();
     
-    // Show a system notification
-    try {
-      await _channel.invokeMethod('showNotification', {
-        'title': sender.username,
-        'body': message,
-      });
-    } catch (e) {
-      debugPrint('Error showing notification: $e');
-    }
-    
-    // For testing, print the notification info
-    debugPrint('New message notification from: ${sender.username}');
+    // Skip native notification since we know the plugin is missing
+    // Just log the notification info for now
+    debugPrint('New message notification from: ${sender.displayName}');
     debugPrint('Message content: $message');
   }
   
@@ -87,17 +78,8 @@ class NotificationService {
     // Play sound for new messages
     playNotificationSound();
     
-    // Show a system notification 
-    try {
-      await _channel.invokeMethod('showNotification', {
-        'title': message.notification?.title ?? 'New Message',
-        'body': message.notification?.body ?? '',
-      });
-    } catch (e) {
-      debugPrint('Error showing notification from Firebase: $e');
-    }
-    
-    // Log the message
+    // Skip native notification since we know the plugin is missing
+    // Just log the message for now
     debugPrint('Handling Firebase message: ${message.notification?.title}');
     debugPrint('Message body: ${message.notification?.body}');
   }
