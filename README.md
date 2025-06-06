@@ -82,7 +82,7 @@ Our comprehensive documentation includes:
       <p>Search for Users</p>
     </div>
     <div style="text-align: center;">
-      <img src="assets/images/screens/settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
+      <img src="docs\images\screens\settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Settings</p>
     </div>
   </div>
