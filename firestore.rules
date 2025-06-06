@@ -36,6 +36,24 @@ service cloud.firestore {
                       .hasOnly(['isDelivered', 'isSeen']);
     }
     
+    // Red Box Messages collection rules
+    match /redbox_messages/{messageId} {
+      // Allow authenticated users to read redbox messages where they are sender or receiver
+      allow read: if request.auth != null && 
+                   (resource.data.senderId == request.auth.uid || 
+                    resource.data.receiverId == request.auth.uid);
+      
+      // Allow authenticated users to create redbox messages where they are the sender
+      allow create: if request.auth != null && 
+                     request.resource.data.senderId == request.auth.uid;
+      
+      // Allow users to update delivery/seen status only if they are the receiver
+      allow update: if request.auth != null &&
+                    resource.data.receiverId == request.auth.uid &&
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['isDelivered', 'isSeen']);
+    }
+    
     // Contacts collection rules
     match /contacts/{contactId} {
       // Allow users to read their own contacts

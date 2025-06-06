@@ -187,6 +187,56 @@ There are two ways to edit your profile:
    - **Block List**: Manage blocked users
    - **Delete Account**: Permanently delete your account
 
+## Red Box Secure Chat
+
+The Red Box is a high-security chat zone that keeps your most sensitive conversations separate from regular chats.
+
+### Accessing Red Box
+
+There are two ways to access the Red Box:
+
+#### Option 1: Via Settings
+1. Go to the "Settings" tab
+2. Under "Privacy & Security", tap "Red Box"
+3. Enter your PIN if you've already set up Red Box, or create a new PIN if it's your first time
+
+#### Option 2: Via Hidden Gesture (More Discreet)
+1. Double-tap on the app title in the navigation bar
+2. Enter your PIN if you've already set up Red Box, or create a new PIN if it's your first time
+
+### Setting Up Red Box
+
+The first time you access Red Box:
+1. You'll be prompted to create a PIN (minimum 4 digits)
+2. Confirm your PIN by entering it again
+3. Your Red Box will be created and ready to use
+
+### Using Red Box Secure Chat
+
+1. After entering your PIN, you'll see the Red Box chat list
+2. Start a new secure conversation by tapping the "+" button
+3. Select a contact from your contacts list to start a secure chat
+4. Messages in Red Box are:
+   - Stored separately from regular chats
+   - Only accessible with your PIN
+   - Marked with a lock icon for easy identification
+
+### Red Box Security Features
+
+- **PIN Protection**: Access requires your secure PIN
+- **Discreet Access**: Use the hidden gesture for maximum privacy
+- **Separate Storage**: Red Box messages are stored separately from regular chats
+- **Visual Indicators**: Lock icons show which messages are secure
+
+### Changing Red Box Settings
+
+1. Access Red Box via Settings or the hidden gesture
+2. Enter your PIN
+3. From the Red Box chat list, you can:
+   - Change your PIN
+   - Enable/disable biometric unlock (if supported by your device)
+   - Set up a decoy PIN that shows empty chats
+
 ### Logging Out
 
 1. Go to the "Settings" tab

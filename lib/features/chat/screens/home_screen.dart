@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/red_box_service.dart';
 import '../../user/screens/search_user_screen.dart';
 import '../../user/screens/user_profile_screen.dart';
 import '../../user/screens/contacts_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'chat_list_screen.dart';
+import 'red_box_pin_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -15,7 +17,10 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   final _firebaseService = FirebaseService();
+  final _redBoxService = RedBoxService();
   int _currentIndex = 0;
+  int _logoTapCount = 0;
+  DateTime? _lastLogoTap;
 
   final List<Widget> _screens = [
     const ChatListScreen(),
@@ -38,12 +43,59 @@ class HomeScreenState extends State<HomeScreen> {
       _currentIndex = index;
     });
   }
+  
+  // Method to check for the hidden gesture to access Red Box
+  Future<void> _checkForRedBoxGesture() async {
+    final now = DateTime.now();
+    
+    // Reset counter if more than 2 seconds since last tap
+    if (_lastLogoTap != null && now.difference(_lastLogoTap!).inSeconds > 2) {
+      _logoTapCount = 1;
+    } else {
+      _logoTapCount++;
+    }
+    
+    _lastLogoTap = now;
+    
+    // If double-tapped on logo (hidden gesture)
+    if (_logoTapCount == 2) {
+      _logoTapCount = 0; // Reset counter
+      
+      try {
+        // Check if Red Box is already set up
+        final isSetUp = await _redBoxService.isRedBoxSetUp();
+        
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RedBoxPinScreen(
+                isSetup: !isSetUp,
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
+        title: GestureDetector(
+          onTap: _checkForRedBoxGesture,
+          child: Text(_titles[_currentIndex]),
+        ),
         elevation: 0,
         actions: [
           if (_currentIndex == 0) // Only show on chats tab

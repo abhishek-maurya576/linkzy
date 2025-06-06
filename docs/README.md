@@ -12,6 +12,8 @@ A real-time 1-on-1 chat application using Flutter with a beautiful UI and intera
 - Animated chat backgrounds
 - Dark and light theme support
 - Auto-focusing message input for rapid conversations
+- Secure "Red Box" mode with PIN protection
+- Hidden gesture access for secure chats
 
 ## Live Demo
 
@@ -24,6 +26,7 @@ Visit the live demo at [https://abhishek-maurya576.github.io/linkzy/](https://ab
 
 ## Version History
 
+- v1.4.0 - Added Red Box secure chat feature with PIN protection and hidden access
 - v1.2.0 - profile editing and Added animated chat backgrounds and dark mode
 - Enhanced chat experience with auto-focusing message input and fixed UI refresh issues
 - v1.0.0 - Initial release with basic chat functionality

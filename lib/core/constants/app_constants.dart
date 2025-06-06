@@ -4,7 +4,7 @@ class AppConstants {
   // App info
   static const String appName = 'Linkzy';
   static const String appTagline = 'Connect. Chat. Link.';
-  static const String appVersion = '1.2.0';
+  static const String appVersion = '1.4.0';
   
   // Error messages
   static const String errorEmptyFields = 'Please fill in all fields';

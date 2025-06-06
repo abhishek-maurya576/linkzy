@@ -3,9 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/notification_service.dart';
+import '../../../services/red_box_service.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../features/user/screens/user_profile_screen.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../features/chat/screens/red_box_pin_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -17,6 +19,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _firebaseService = FirebaseService();
   final _notificationService = NotificationService();
+  final _redBoxService = RedBoxService();
   bool _areNotificationsEnabled = true;
   bool _isLoading = false;
 
@@ -58,6 +61,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notificationService.toggleSound(_areNotificationsEnabled);
     } catch (e) {
       debugPrint('Failed to save notification settings: $e');
+    }
+  }
+
+  Future<void> _accessRedBox() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Check if Red Box is already set up
+      final isSetUp = await _redBoxService.isRedBoxSetUp();
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RedBoxPinScreen(
+              isSetup: !isSetUp,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error accessing Red Box: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -104,16 +146,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
 
         const SizedBox(height: 24),
-        _buildSectionTitle('Account'),
+        _buildSectionTitle('Privacy & Security'),
         _buildSettingCardWithAction(
-          title: 'Edit Profile',
-          subtitle: 'Update your name, username and photo',
-          icon: Icons.person,
+          title: 'Red Box',
+          subtitle: 'Access secure chat mode',
+          icon: Icons.security,
+          iconColor: Colors.red[800],
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const UserProfileScreen()),
-            );
+            _accessRedBox();
           },
         ),
         _buildSettingCardWithAction(
@@ -130,6 +170,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.block,
           onTap: () {
             // Navigate to block list screen
+          },
+        ),
+
+        const SizedBox(height: 24),
+        _buildSectionTitle('Account'),
+        _buildSettingCardWithAction(
+          title: 'Edit Profile',
+          subtitle: 'Update your name, username and photo',
+          icon: Icons.person,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+            );
           },
         ),
         _buildSettingCardWithAction(
