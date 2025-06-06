@@ -242,9 +242,12 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
                     textCapitalization: TextCapitalization.sentences,
                     maxLines: null,
                     onChanged: (text) {
-                      setState(() {
-                        _isTyping = text.isNotEmpty;
-                      });
+                      final isTypingNow = text.isNotEmpty;
+                      if (_isTyping != isTypingNow) {
+                        setState(() {
+                          _isTyping = isTypingNow;
+                        });
+                      }
                     },
                     onSubmitted: (text) {
                       if (_isTyping) {
