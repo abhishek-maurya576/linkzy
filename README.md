@@ -17,8 +17,20 @@ A modern real-time 1-on-1 chat application built with Flutter and Firebase, feat
 ![Last Commit](https://img.shields.io/github/last-commit/abhishek-maurya576/linkzy)
 ![Made with Flutter](https://img.shields.io/badge/Made%20with-Flutter-blue?logo=flutter)
 ![Open to Contributions](https://img.shields.io/badge/Open%20to-Contributions-brightgreen)
+![Latest Release](https://img.shields.io/badge/Latest%20Release-v1.4.0-brightgreen)
 
 </div>
+
+## Latest Release Highlights (v1.4.0)
+
+🔥 **New Features:**
+- **🛡️ Enhanced Red Box**: Secure chat feature now accessible via Settings
+- **🔐 PIN Protection**: Added PIN/passphrase protection for sensitive chats
+- **👥 Contact Management**: New dedicated screen for managing contacts
+- **🖼️ Animated Chat Backgrounds**: Dynamic chat screen backgrounds
+- **👤 Profile Editing**: Fully enabled profile customization
+
+For detailed information about all new features and improvements, check out our [Release Notes](docs/RELEASE_NOTES.md).
 
 ## Features
 
@@ -29,6 +41,7 @@ A modern real-time 1-on-1 chat application built with Flutter and Firebase, feat
 - **Responsive design** that works on mobile, web, and desktop platforms
 - **Modern UI** with dark mode support and smooth animations
 - **Firebase backend** for reliable data storage and synchronization
+- **Red Box feature** for secure, PIN-protected messaging
 
 ## Getting Started
 
@@ -60,6 +73,7 @@ Our comprehensive documentation includes:
 - [Features Overview](docs/FEATURES.md)
 - [Architecture Documentation](docs/ARCHITECTURE.md)
 - [Firebase Setup](docs/FIREBASE_SETUP.md)
+- [Release Notes](docs/RELEASE_NOTES.md)
 
 ## App Screenshots
 
