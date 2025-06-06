@@ -82,11 +82,11 @@ Our comprehensive documentation includes:
       <p>Search for Users</p>
     </div>
     <div style="text-align: center;">
-      <img src="docs\images\screens\settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
+      <img src="docs/images/screens/settings.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Settings</p>
     </div>
     <div style="text-align: center;">
-      <img src="assets\images\screens\red_box_chatlist.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
+      <img src="assets/images/screens/red_box_chatlist.png" alt="Settings" style="width: 100%; max-width: 200px; border-radius: 8px;" />
       <p>Red Box</p>
     </div>
   </div>
@@ -94,7 +94,7 @@ Our comprehensive documentation includes:
 ## 🛡️ Red Box Screens  
 | Chat List | Chat | Cantact |
 |------|--------|--------|
-| ![Welcome](assets\images\screens\redBoxChatList.png) | ![Registration](assets\images\screens\red_box_chat.png) | ![Contact](assets\images\screens\Red_box_contact.png)
+| ![Welcome](assets/images/screens/redBoxChatList.png) | ![Registration](assets/images/screens/red_box_chat.png) | ![Contact](assets/images/screens/Red_box_contact.png)
 
 ## Technologies Used
 
