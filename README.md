@@ -94,7 +94,7 @@ Our comprehensive documentation includes:
 ## 🛡️ Red Box Screens  
 | Chat List | Chat | Cantact |
 |------|--------|--------|
-| ![Welcome](assets\images\screens\redBoxChatList.png) | ![Registration](assets\images\screens\red_box_chat.png) ![Contact](assets\images\screens\Red_box_contact.png)
+| ![Welcome](assets\images\screens\redBoxChatList.png) | ![Registration](assets\images\screens\red_box_chat.png) | ![Contact](assets\images\screens\Red_box_contact.png)
 
 ## Technologies Used
 
