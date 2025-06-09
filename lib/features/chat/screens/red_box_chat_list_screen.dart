@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../services/red_box_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/firebase_service.dart';
+import '../../../services/panic_button_service.dart';
+import '../../../services/decoy_message_service.dart';
+import '../../../services/connectivity_service.dart';
 import '../../user/models/app_user.dart';
 import '../../user/models/contact.dart';
 import '../../user/screens/contacts_screen.dart';
@@ -24,6 +28,11 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
   final _redBoxService = RedBoxService();
   final _firebaseService = FirebaseService();
   final _notificationService = NotificationService();
+  final _panicButtonService = PanicButtonService();
+  final _decoyMessageService = DecoyMessageService();
+  final _connectivityService = ConnectivityService();
+  
+  bool _isOnline = true;
   String? _currentUserId;
   
   // Track processed message IDs to prevent duplicate notifications
@@ -34,6 +43,36 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
     super.initState();
     // Get current user ID from Firebase Auth
     _currentUserId = _redBoxService.currentUserId;
+    
+    // Initialize connectivity monitoring
+    _initConnectivity();
+  }
+  
+  Future<void> _initConnectivity() async {
+    // Start monitoring connectivity
+    await _connectivityService.initialize();
+    
+    // Listen for connectivity changes
+    _connectivityService.connectionStream.listen((isConnected) {
+      setState(() {
+        _isOnline = isConnected;
+      });
+      
+      if (isConnected) {
+        _syncPendingMessages();
+      }
+    });
+    
+    // Get initial connection status
+    _isOnline = _connectivityService.hasConnection;
+  }
+  
+  Future<void> _syncPendingMessages() async {
+    try {
+      await _redBoxService.syncPendingMessages();
+    } catch (e) {
+      debugPrint('Error syncing pending messages: ${e.toString()}');
+    }
   }
   
   // Navigate to contacts to select a contact for secure chat
@@ -41,7 +80,9 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ContactsSelectionScreen(),
+        builder: (context) => ContactsSelectionScreen(
+          isDecoyMode: widget.isDecoyMode,
+        ),
       ),
     );
   }
@@ -63,9 +104,145 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
       await _notificationService.showMessageNotification(sender, "New secure message");
     }
   }
+  
+  // Configure panic button options
+  void _configurePanicButton() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text(
+              'Panic Button Settings',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Configure your emergency exit gesture for Red Box:',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                _buildPanicGestureOptions(setDialogState),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('SAVE'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+  
+  Widget _buildPanicGestureOptions(StateSetter setDialogState) {
+    return FutureBuilder<PanicGestureType>(
+      future: _panicButtonService.getPanicGestureType(),
+      builder: (context, snapshot) {
+        final currentGesture = snapshot.data ?? PanicGestureType.tripleTap;
+        
+        void updateGesture(PanicGestureType value) {
+          if (value != null) {
+            Map<String, dynamic> gestureData = {};
+            if (value == PanicGestureType.shake) {
+              gestureData = {'sensitivity': 'medium'};
+            }
+            
+            _panicButtonService.configurePanicGesture(value, gestureData);
+            
+            // Update the dialog state immediately
+            setDialogState(() {});
+            
+            // Provide haptic feedback
+            HapticFeedback.lightImpact();
+          }
+        }
+        
+        return Column(
+          children: [
+            InkWell(
+              onTap: () => updateGesture(PanicGestureType.tripleTap),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: RadioListTile<PanicGestureType>(
+                  title: const Text(
+                    'Triple Tap (anywhere)',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: const Text('Tap screen three times quickly to exit'),
+                  value: PanicGestureType.tripleTap,
+                  groupValue: currentGesture,
+                  activeColor: Colors.red.shade700,
+                  onChanged: (value) => updateGesture(value!),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            InkWell(
+              onTap: () => updateGesture(PanicGestureType.shake),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: RadioListTile<PanicGestureType>(
+                  title: const Text(
+                    'Shake Device',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: const Text('Shake your device to quickly exit'),
+                  value: PanicGestureType.shake,
+                  groupValue: currentGesture,
+                  activeColor: Colors.red.shade700,
+                  onChanged: (value) => updateGesture(value!),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            InkWell(
+              onTap: () => updateGesture(PanicGestureType.doubleTapBack),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: RadioListTile<PanicGestureType>(
+                  title: const Text(
+                    'Double Tap Back Button', 
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: const Text('Tap back button twice to exit'),
+                  value: PanicGestureType.doubleTapBack,
+                  groupValue: currentGesture,
+                  activeColor: Colors.red.shade700,
+                  onChanged: (value) => updateGesture(value!),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Wrap everything with panic button detection
+    return _panicButtonService.wrapWithTripleTapDetection(
+      context,
+      _buildScreen(),
+    );
+  }
+  
+  Widget _buildScreen() {
     if (_currentUserId == null) {
       return const Scaffold(
         body: Center(
@@ -74,66 +251,139 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
       );
     }
     
-    // Show empty state for decoy mode
-    if (widget.isDecoyMode) {
-      return _buildRedBoxChatListScaffold(_buildEmptyState());
-    }
-
+    // Show decoy mode or regular mode
     return _buildRedBoxChatListScaffold(
-      StreamBuilder<List<AppUser>>(
-        stream: _redBoxService.getUsersWithRedBoxChats(_currentUserId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          }
-
-          final users = snapshot.data ?? [];
-
-          if (users.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              
-              return StreamBuilder<RedBoxMessage?>(
-                stream: _redBoxService.getLatestRedBoxMessage(_currentUserId!, user.uid),
-                builder: (context, messageSnapshot) {
-                  final latestMessage = messageSnapshot.data;
-                  
-                  // Show loading state if we're still getting the latest message
-                  if (messageSnapshot.connectionState == ConnectionState.waiting) {
-                    return _buildChatListItemSkeleton();
-                  }
-                  
-                  // If we have no message yet, skip this user
-                  if (latestMessage == null) {
-                    return const SizedBox.shrink();
-                  }
-                  
-                  // Check for new messages and show notifications
-                  // Handle async method in a fire-and-forget way
-                  _checkForNewMessage(latestMessage, user).then((_) {
-                    // Notification shown or not needed
-                  }).catchError((error) {
-                    debugPrint('Error showing notification: $error');
-                  });
-                  
-                  return _buildChatListItem(user, latestMessage);
+      widget.isDecoyMode ? _buildDecoyList() : _buildRealList(),
+    );
+  }
+  
+  Widget _buildDecoyList() {
+    if (_currentUserId == null) return _buildEmptyState();
+    
+    return StreamBuilder<List<AppUser>>(
+      stream: _decoyMessageService.getDecoyUserList(_currentUserId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        
+        final contacts = snapshot.data ?? [];
+        
+        if (contacts.isEmpty) {
+          return _buildEmptyState();
+        }
+        
+        return ListView.builder(
+          itemCount: contacts.length,
+          itemBuilder: (context, index) {
+            final contact = contacts[index];
+            
+            return StreamBuilder<RedBoxMessage?>(
+              stream: _decoyMessageService.getLatestDecoyMessage(
+                _currentUserId!,
+                contact.uid,
+              ),
+              builder: (context, messageSnapshot) {
+                final latestMessage = messageSnapshot.data;
+                
+                if (messageSnapshot.connectionState == ConnectionState.waiting) {
+                  return _buildChatListItemSkeleton();
                 }
+                
+                if (latestMessage == null) {
+                  return const SizedBox.shrink();
+                }
+                
+                return _buildChatListItem(contact, latestMessage, isDecoy: true);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildRealList() {
+    if (_currentUserId == null) return _buildEmptyState();
+    
+    return Column(
+      children: [
+        // Offline indicator
+        if (!_isOnline)
+          Container(
+            width: double.infinity,
+            color: Colors.orange.shade800,
+            padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+            child: const Row(
+              children: [
+                Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text(
+                  'Offline Mode - Messages will sync when connection returns',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        
+        // Chat list
+        Expanded(
+          child: StreamBuilder<List<AppUser>>(
+            stream: _redBoxService.getUsersWithRedBoxChats(_currentUserId!),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+    
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text('Error: ${snapshot.error}'),
+                );
+              }
+    
+              final users = snapshot.data ?? [];
+    
+              if (users.isEmpty) {
+                return _buildEmptyState();
+              }
+    
+              return ListView.builder(
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  
+                  return StreamBuilder<RedBoxMessage?>(
+                    stream: _redBoxService.getLatestRedBoxMessage(_currentUserId!, user.uid),
+                    builder: (context, messageSnapshot) {
+                      final latestMessage = messageSnapshot.data;
+                      
+                      // Show loading state if we're still getting the latest message
+                      if (messageSnapshot.connectionState == ConnectionState.waiting) {
+                        return _buildChatListItemSkeleton();
+                      }
+                      
+                      // If we have no message yet, skip this user
+                      if (latestMessage == null) {
+                        return const SizedBox.shrink();
+                      }
+                      
+                      // Check for new messages and show notifications
+                      // Handle async method in a fire-and-forget way
+                      _checkForNewMessage(latestMessage, user);
+                      
+                      return _buildChatListItem(user, latestMessage, isDecoy: false);
+                    }
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
   
@@ -149,6 +399,15 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
         ),
         backgroundColor: Colors.red.shade800, // Special red color for Red Box
         actions: [
+          // Panic button configuration
+          if (!widget.isDecoyMode)
+            IconButton(
+              icon: const Icon(Icons.warning_amber),
+              onPressed: _configurePanicButton,
+              tooltip: 'Configure Panic Button',
+            ),
+          
+          // Exit button
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -212,7 +471,7 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
     );
   }
   
-  Widget _buildChatListItem(AppUser user, RedBoxMessage latestMessage) {
+  Widget _buildChatListItem(AppUser user, RedBoxMessage latestMessage, {bool isDecoy = false}) {
     final isMyMessage = latestMessage.senderId == _currentUserId;
     final messageStatus = isMyMessage
         ? latestMessage.isSeen
@@ -227,100 +486,148 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.red.shade800,
-          backgroundImage: user.profilePicUrl != null && user.profilePicUrl!.isNotEmpty
-              ? NetworkImage(user.profilePicUrl!)
-              : null,
-          child: user.profilePicUrl == null || user.profilePicUrl!.isEmpty
-              ? Text(
-                  user.displayName[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.lock, size: 12, color: Colors.red),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                user.displayName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Row(
-          children: [
-            Expanded(
-              child: Text(
-                isMyMessage ? 'You: ${latestMessage.content}' : latestMessage.content,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: !isMyMessage && !latestMessage.isSeen
-                      ? Colors.red.shade800
-                      : null,
-                  fontWeight: !isMyMessage && !latestMessage.isSeen
-                      ? FontWeight.bold
-                      : null,
-                ),
-              ),
-            ),
-            if (isMyMessage && messageStatus.isNotEmpty) ...[
-              const SizedBox(width: 4),
-              Text(
-                messageStatus,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              _formatDateTime(latestMessage.timestamp),
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (!isMyMessage && !latestMessage.isSeen)
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade800,
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
+      child: InkWell(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => RedBoxChatScreen(otherUser: user),
+              builder: (context) => RedBoxChatScreen(
+                otherUser: user,
+                isDecoyMode: isDecoy,
+              ),
             ),
           );
         },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.red.shade800,
+            backgroundImage: user.profilePicUrl != null && user.profilePicUrl.isNotEmpty
+                ? NetworkImage(user.profilePicUrl)
+                : null,
+            child: (user.profilePicUrl == null || user.profilePicUrl.isEmpty)
+                ? Text(
+                    user.displayName[0].toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  )
+                : null,
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.lock, size: 12, color: Colors.red),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  user.displayName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isMyMessage ? "You: ${latestMessage.content}" : latestMessage.content,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: !latestMessage.isSeen && !isMyMessage
+                      ? Colors.black
+                      : Colors.grey[600],
+                  fontWeight: !latestMessage.isSeen && !isMyMessage
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    _formatMessageTime(latestMessage.timestamp),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  if (isMyMessage && messageStatus.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      messageStatus,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      latestMessage.isSeen
+                          ? Icons.done_all
+                          : Icons.done,
+                      size: 12,
+                      color: latestMessage.isSeen ? Colors.blue : Colors.grey[600],
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Offline message indicator
+              if (!isDecoy && !_isOnline && _isMessagePending(latestMessage))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade800,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Pending',
+                    style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+  
+  bool _isMessagePending(RedBoxMessage message) {
+    // In a real implementation, we'd check if this message is in the pending queue
+    // For now, just check if it's recent and from the current user
+    return message.senderId == _currentUserId && 
+           DateTime.now().difference(message.timestamp).inMinutes < 5 &&
+           !message.isDelivered;
+  }
+  
+  String _formatMessageTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    if (messageDate == today) {
+      // Today, show time
+      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == yesterday) {
+      // Yesterday
+      return 'Yesterday';
+    } else {
+      // Other day, show date
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
   }
   
   Widget _buildChatListItemSkeleton() {
@@ -336,50 +643,49 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
           backgroundColor: Colors.grey[300],
         ),
         title: Container(
+          height: 14,
           width: 100,
-          height: 16,
-          color: Colors.grey[300],
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
-        subtitle: Container(
-          width: double.infinity,
-          height: 14,
-          color: Colors.grey[300],
-        ),
-        trailing: Container(
-          width: 30,
-          height: 14,
-          color: Colors.grey[300],
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              height: 10,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 10,
+              width: 80,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
         ),
       ),
     );
-  }
-  
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    
-    if (messageDate == today) {
-      // Today: show time
-      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (messageDate == yesterday) {
-      // Yesterday
-      return 'Yesterday';
-    } else if (now.difference(dateTime).inDays < 7) {
-      // Within a week: show day name
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      return days[dateTime.weekday - 1];
-    } else {
-      // Older: show date
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-    }
   }
 }
 
 // New screen to select contacts for Red Box chats
 class ContactsSelectionScreen extends StatefulWidget {
-  const ContactsSelectionScreen({Key? key}) : super(key: key);
+  final bool isDecoyMode;
+
+  const ContactsSelectionScreen({
+    Key? key,
+    this.isDecoyMode = false,
+  }) : super(key: key);
 
   @override
   _ContactsSelectionScreenState createState() => _ContactsSelectionScreenState();
@@ -410,118 +716,168 @@ class _ContactsSelectionScreenState extends State<ContactsSelectionScreen> {
         title: const Text('Select Contact'),
         backgroundColor: Colors.red.shade800,
       ),
-      body: StreamBuilder<List<Contact>>(
-        stream: _firebaseService.getUserContacts(_currentUserId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error loading contacts: ${snapshot.error}'),
-            );
-          }
-
-          final contacts = snapshot.data ?? [];
-
-          if (contacts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.contact_phone_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No contacts yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add contacts in the Contacts tab first',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: contacts.length,
-            padding: const EdgeInsets.all(8),
-            itemBuilder: (context, index) {
-              final contact = contacts[index];
-              return _buildContactItem(contact);
-            },
-          );
-        },
-      ),
+      body: widget.isDecoyMode
+          ? _buildDecoyContactsList()
+          : _buildRealContactsList(),
     );
   }
 
-  Widget _buildContactItem(Contact contact) {
-    final user = contact.userDetails;
+  Widget _buildDecoyContactsList() {
+    // For decoy mode, we need to generate fake contacts that aren't already shown in the chat list
+    final _decoyMessageService = DecoyMessageService();
     
-    if (user == null) {
-      return const SizedBox.shrink();
-    }
-    
-    // Use custom name if set, otherwise use display name or username
-    final displayName = contact.contactName.isNotEmpty 
-        ? contact.contactName 
-        : user.displayName.isNotEmpty 
-            ? user.displayName 
-            : user.username;
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.red.shade800,
-          backgroundImage: user.profilePicUrl != null && user.profilePicUrl!.isNotEmpty
-              ? NetworkImage(user.profilePicUrl!)
-              : null,
-          child: user.profilePicUrl == null || user.profilePicUrl!.isEmpty
-              ? Text(
-                  displayName[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
-        title: Text(
-          displayName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          '@${user.username}',
-          style: TextStyle(color: Colors.grey[600]),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // Navigate to Red Box chat screen with this contact
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => RedBoxChatScreen(otherUser: user),
-            ),
+    return FutureBuilder<List<AppUser>>(
+      future: _decoyMessageService.generateFakeContacts(15), // Generate a larger pool of fake contacts
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading contacts: ${snapshot.error}'),
           );
-        },
+        }
+
+        final contacts = snapshot.data ?? [];
+
+        if (contacts.isEmpty) {
+          return _buildEmptyContactsList();
+        }
+
+        return ListView.builder(
+          itemCount: contacts.length,
+          itemBuilder: (context, index) {
+            final contact = contacts[index];
+            
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.red.shade800,
+                child: Text(
+                  contact.displayName[0].toUpperCase(),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              title: Text(contact.displayName),
+              subtitle: Text(contact.email),
+              onTap: () {
+                // Navigate to chat screen with the selected contact
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RedBoxChatScreen(
+                      otherUser: contact,
+                      isDecoyMode: true,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRealContactsList() {
+    return StreamBuilder<List<Contact>>(
+      stream: _firebaseService.getUserContacts(_currentUserId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading contacts: ${snapshot.error}'),
+          );
+        }
+
+        final contacts = snapshot.data ?? [];
+
+        if (contacts.isEmpty) {
+          return _buildEmptyContactsList();
+        }
+
+        return ListView.builder(
+          itemCount: contacts.length,
+          itemBuilder: (context, index) {
+            final contact = contacts[index];
+            // Skip contacts without user details
+            if (contact.userDetails == null) {
+              return const SizedBox.shrink();
+            }
+            
+            // Use the userDetails for display
+            final user = contact.userDetails!;
+            
+            // Use custom name if set, otherwise display name from userDetails
+            final displayName = contact.contactName.isNotEmpty 
+                ? contact.contactName 
+                : user.displayName;
+            
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.red.shade800,
+                backgroundImage: user.profilePicUrl != null && 
+                              user.profilePicUrl.isNotEmpty
+                    ? NetworkImage(user.profilePicUrl)
+                    : null,
+                child: user.profilePicUrl == null || user.profilePicUrl.isEmpty
+                    ? Text(
+                        displayName[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
+                      )
+                    : null,
+              ),
+              title: Text(displayName),
+              subtitle: Text(user.email),
+              onTap: () {
+                // Navigate to chat screen with the selected contact
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RedBoxChatScreen(
+                      otherUser: user,
+                      isDecoyMode: false,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyContactsList() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.contact_phone_outlined,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No contacts found',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add contacts to start secure chats',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }

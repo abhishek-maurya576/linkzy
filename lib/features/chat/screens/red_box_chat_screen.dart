@@ -5,15 +5,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import '../../../services/red_box_service.dart';
 import '../../../services/notification_service.dart';
+import '../../../services/decoy_message_service.dart';
+import '../../../services/panic_button_service.dart';
+import '../../../services/connectivity_service.dart';
 import '../../user/models/app_user.dart';
 import '../models/red_box_message.dart';
 
 class RedBoxChatScreen extends StatefulWidget {
   final AppUser otherUser;
+  final bool isDecoyMode;
 
   const RedBoxChatScreen({
     Key? key,
     required this.otherUser,
+    this.isDecoyMode = false,
   }) : super(key: key);
 
   @override
@@ -24,7 +29,12 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
   final _messageController = TextEditingController();
   final _redBoxService = RedBoxService();
   final _notificationService = NotificationService();
+  final _decoyMessageService = DecoyMessageService();
+  final _panicButtonService = PanicButtonService();
+  final _connectivityService = ConnectivityService();
+  
   bool _isTyping = false;
+  bool _isOnline = true;
   String? _currentUserId;
   bool _isEmojiPickerVisible = false;
   final FocusNode _messageFocusNode = FocusNode();
@@ -44,10 +54,28 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
     _currentUserId = _redBoxService.currentUserId;
     _messageFocusNode.addListener(_onFocusChange);
     
+    // Initialize connectivity monitoring
+    _initConnectivity();
+    
     // Add this to request focus when the chat screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_messageFocusNode);
     });
+  }
+  
+  Future<void> _initConnectivity() async {
+    // Start monitoring connectivity
+    await _connectivityService.initialize();
+    
+    // Listen for connectivity changes
+    _connectivityService.connectionStream.listen((isConnected) {
+      setState(() {
+        _isOnline = isConnected;
+      });
+    });
+    
+    // Get initial connection status
+    _isOnline = _connectivityService.hasConnection;
   }
   
   @override
@@ -72,6 +100,13 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
     
     // Clear the input field
     _messageController.clear();
+    
+    // Don't actually send messages in decoy mode
+    if (widget.isDecoyMode) {
+      // Just show a "sending" animation for effect
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
     
     try {
       await _redBoxService.sendRedBoxMessage(
@@ -111,6 +146,14 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap everything with panic button detection
+    return _panicButtonService.wrapWithTripleTapDetection(
+      context,
+      _buildChatScreen(),
+    );
+  }
+  
+  Widget _buildChatScreen() {
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -122,8 +165,8 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
                             widget.otherUser.profilePicUrl!.isNotEmpty
                   ? NetworkImage(widget.otherUser.profilePicUrl!)
                   : null,
-              child: widget.otherUser.profilePicUrl == null || 
-                  widget.otherUser.profilePicUrl!.isEmpty
+              child: (widget.otherUser.profilePicUrl == null || 
+                  widget.otherUser.profilePicUrl!.isEmpty)
                   ? Text(
                       widget.otherUser.displayName[0].toUpperCase(),
                       style: const TextStyle(
@@ -191,6 +234,24 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
       ),
       body: Column(
         children: [
+          // Offline indicator
+          if (!widget.isDecoyMode && !_isOnline)
+            Container(
+              width: double.infinity,
+              color: Colors.orange.shade800,
+              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline Mode - Messages will sync when connection returns',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          
           // Message list
           Expanded(
             child: _buildMessageList(),
@@ -345,6 +406,12 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
       );
     }
     
+    // For decoy mode, use special decoy messages
+    if (widget.isDecoyMode) {
+      return _buildDecoyMessageList();
+    }
+    
+    // For real mode, use actual messages
     return StreamBuilder<List<RedBoxMessage>>(
       stream: _redBoxService.getRedBoxMessages(_currentUserId!, widget.otherUser.uid),
       builder: (context, snapshot) {
@@ -363,34 +430,7 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
         final messages = snapshot.data ?? [];
         
         if (messages.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.lock,
-                  size: 48,
-                  color: Colors.red.withOpacity(0.5),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No secure messages yet',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Your messages will be stored in your Red Box',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
+          return _buildEmptyChatState();
         }
         
         // Mark messages as seen
@@ -400,52 +440,108 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
           }
         }
         
-        // Show messages in chronological order (oldest first at the top)
-        final sortedMessages = messages.toList();
+        return _buildMessageListView(messages);
+      },
+    );
+  }
+  
+  Widget _buildDecoyMessageList() {
+    return StreamBuilder<List<RedBoxMessage>>(
+      stream: _decoyMessageService.getDecoyMessages(_currentUserId!, widget.otherUser.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
         
-        return ListView.builder(
-          reverse: false,
-          padding: const EdgeInsets.all(16),
-          itemCount: sortedMessages.length,
-          itemBuilder: (context, index) {
-            final message = sortedMessages[index];
-            final isMyMessage = message.senderId == _currentUserId;
+        final messages = snapshot.data ?? [];
+        
+        if (messages.isEmpty) {
+          return _buildEmptyChatState();
+        }
+        
+        return _buildMessageListView(messages);
+      },
+    );
+  }
+  
+  Widget _buildEmptyChatState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.lock,
+            size: 48,
+            color: Colors.red.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No secure messages yet',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your messages will be stored in your Red Box',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildMessageListView(List<RedBoxMessage> messages) {
+    // Show messages in chronological order (oldest first at the top)
+    final sortedMessages = messages.toList();
+    
+    return ListView.builder(
+      reverse: false,
+      padding: const EdgeInsets.all(16),
+      itemCount: sortedMessages.length,
+      itemBuilder: (context, index) {
+        final message = sortedMessages[index];
+        final isMyMessage = message.senderId == _currentUserId;
+        
+        // Group messages by sender and time
+        final isFirstInGroup = index == 0 ||
+            sortedMessages[index - 1].senderId != message.senderId ||
+            _shouldShowTimestamp(sortedMessages[index - 1].timestamp, message.timestamp);
             
-            // Group messages by sender and time
-            final isFirstInGroup = index == 0 ||
-                sortedMessages[index - 1].senderId != message.senderId ||
-                _shouldShowTimestamp(sortedMessages[index - 1].timestamp, message.timestamp);
-                
-            final isLastInGroup = index == sortedMessages.length - 1 ||
-                sortedMessages[index + 1].senderId != message.senderId ||
-                _shouldShowTimestamp(message.timestamp, sortedMessages[index + 1].timestamp);
-            
-            return Column(
-              children: [
-                if (isFirstInGroup && index > 0)
-                  const SizedBox(height: 8),
-                  
-                if (isFirstInGroup || _shouldShowTimestamp(sortedMessages[max(0, index - 1)].timestamp, message.timestamp))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      _formatFullDateTime(message.timestamp),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
+        final isLastInGroup = index == sortedMessages.length - 1 ||
+            sortedMessages[index + 1].senderId != message.senderId ||
+            _shouldShowTimestamp(message.timestamp, sortedMessages[index + 1].timestamp);
+        
+        return Column(
+          children: [
+            if (isFirstInGroup && index > 0)
+              const SizedBox(height: 8),
+              
+            if (isFirstInGroup || _shouldShowTimestamp(sortedMessages[max(0, index - 1)].timestamp, message.timestamp))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  _formatFullDateTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
                   ),
-                
-                _buildMessageBubble(
-                  message: message,
-                  isMyMessage: isMyMessage,
-                  isFirstInGroup: isFirstInGroup,
-                  isLastInGroup: isLastInGroup,
                 ),
-              ],
-            );
-          },
+              ),
+            
+            _buildMessageBubble(
+              message: message,
+              isMyMessage: isMyMessage,
+              isFirstInGroup: isFirstInGroup,
+              isLastInGroup: isLastInGroup,
+            ),
+          ],
         );
       },
     );
@@ -524,9 +620,9 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
     );
   }
   
-  bool _shouldShowTimestamp(DateTime previous, DateTime current) {
-    // Show timestamp if messages are more than 5 minutes apart
-    return current.difference(previous).inMinutes.abs() > 5;
+  bool _shouldShowTimestamp(DateTime time1, DateTime time2) {
+    // Show timestamp if more than 5 minutes between messages
+    return time2.difference(time1).inMinutes > 5;
   }
   
   String _formatMessageTime(DateTime time) {
@@ -536,25 +632,21 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
   String _formatFullDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final yesterday = today.subtract(const Duration(days: 1));
     final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
     
-    String dayStr;
-    if (messageDate == today) {
-      dayStr = 'Today';
-    } else if (messageDate == yesterday) {
-      dayStr = 'Yesterday';
-    } else {
-      // Format as "Mon, 15 Jan 2023"
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final day = days[dateTime.weekday - 1];
-      final month = months[dateTime.month - 1];
-      dayStr = '$day, ${dateTime.day} $month ${dateTime.year}';
-    }
+    String timeStr = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
     
-    final time = _formatMessageTime(dateTime);
-    return '$dayStr at $time';
+    if (messageDate == today) {
+      // Today: just show time
+      return timeStr;
+    } else if (messageDate == yesterday) {
+      // Yesterday: show "Yesterday" + time
+      return 'Yesterday, $timeStr';
+    } else {
+      // Other date: show full date + time
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}, $timeStr';
+    }
   }
 }
 

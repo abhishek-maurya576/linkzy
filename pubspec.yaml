@@ -64,6 +64,10 @@ dependencies:
   just_audio: ^0.9.36
   riverpod_annotation: ^2.6.1
   http: ^1.4.0
+  
+  # For RedBox feature
+  connectivity_plus: ^5.0.2  # For offline mode detection
+  sensors_plus: ^4.0.2       # For shake gesture detection
 
 dev_dependencies:
   flutter_test:

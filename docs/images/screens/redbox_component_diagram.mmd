@@ -1,0 +1,58 @@
+classDiagram
+    class RedBoxService {
+        -firestore: FirebaseFirestore
+        -auth: FirebaseAuth
+        +sendRedBoxMessage()
+        +getRedBoxMessages()
+        +getUsersWithRedBoxChats()
+        +markRedBoxMessageAsSeen()
+        +verifyPin()
+        +syncPendingMessages()
+        -_encryptMessage()
+        -_decryptMessage()
+        -_mergeCachedMessages()
+    }
+    
+    class PanicButtonService {
+        -preferences: SharedPreferences
+        +configurePanicGesture()
+        +getPanicGestureType()
+        +wrapWithTripleTapDetection()
+        +wrapWithShakeDetection()
+        +exitApp()
+    }
+    
+    class DecoyMessageService {
+        -_firstNames: List~String~
+        -_lastNames: List~String~
+        -_messageTemplates: Map
+        +generateFakeContacts()
+        +generateFakeMessageHistory()
+        +getDecoyUserList()
+        +getLatestDecoyMessage()
+        +getDecoyMessages()
+    }
+    
+    class ConnectivityService {
+        -_connectivity: Connectivity
+        -_connectionStatus: bool
+        +connectionStream: Stream~bool~
+        +initialize()
+        +get hasConnection()
+    }
+    
+    class RedBoxMessage {
+        +id: String
+        +senderId: String
+        +receiverId: String
+        +content: String
+        +timestamp: DateTime
+        +isDelivered: bool
+        +isSeen: bool
+        +isEncrypted: bool
+    }
+    
+    RedBoxService --> RedBoxMessage : manages
+    RedBoxService --> ConnectivityService : uses
+    RedBoxService --> PanicButtonService : uses
+    RedBoxService --> DecoyMessageService : uses 

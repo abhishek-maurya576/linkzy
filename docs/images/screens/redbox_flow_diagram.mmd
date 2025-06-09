@@ -1,0 +1,36 @@
+flowchart TD
+    A[User] -->|Enter PIN| B{PIN Check}
+    B -->|Regular PIN| C[Real Red Box]
+    B -->|Decoy PIN| D[Decoy Mode]
+    
+    C -->|Encrypt/Decrypt| E[(Secure Storage)]
+    C -->|Send Message| F[E2E Encryption]
+    F -->|Store| E
+    C -->|View Messages| E
+    C -->|Triple Tap/Shake| G[Panic Button]
+    G -->|Emergency Exit| H[App Exit]
+    
+    D -->|Simulate| I[(Fake Contacts)]
+    D -->|Generate| J[AI Message Generator]
+    J -->|Display| D
+    
+    C -->|Network Status| K{Connection Check}
+    K -->|Online| L[Sync Messages]
+    K -->|Offline| M[Cache Messages]
+    M -->|Connection Returns| L
+    
+    subgraph "Red Box Security Model"
+    E
+    F
+    end
+    
+    subgraph "Decoy System"
+    I
+    J
+    end
+    
+    subgraph "Offline Capability"
+    K
+    L
+    M
+    end 
