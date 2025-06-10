@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/background_sync_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/forgot_password_screen.dart';
@@ -30,11 +32,24 @@ class LinkzyApp extends StatefulWidget {
 class _LinkzyAppState extends State<LinkzyApp> {
   final FirebaseService _firebaseService = FirebaseService();
   final NotificationService _notificationService = NotificationService();
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final BackgroundSyncService _backgroundSyncService = BackgroundSyncService();
   
   @override
   void initState() {
     super.initState();
-    _initNotifications();
+    _initServices();
+  }
+  
+  Future<void> _initServices() async {
+    // Initialize connectivity monitoring
+    await _connectivityService.initialize();
+    
+    // Initialize background sync service
+    await _backgroundSyncService.initialize();
+    
+    // Initialize notifications
+    await _initNotifications();
   }
   
   Future<void> _initNotifications() async {
@@ -186,6 +201,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _controller.dispose();
+    final backgroundSyncService = BackgroundSyncService();
+    backgroundSyncService.dispose();
     super.dispose();
   }
 

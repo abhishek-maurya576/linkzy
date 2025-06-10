@@ -9,6 +9,7 @@ import 'package:rxdart/rxdart.dart';
 import '../features/chat/models/red_box_message.dart';
 import '../features/user/models/app_user.dart';
 import 'panic_button_service.dart';
+import 'connectivity_service.dart';
 
 class RedBoxService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -184,11 +185,13 @@ class RedBoxService {
   // Red Box Chat Methods
   
   // Send a message in Red Box
-  Future<void> sendRedBoxMessage(
-    String senderId,
-    String receiverId,
-    String content,
-  ) async {
+  Future<void> sendRedBoxMessage({
+    required String senderId,
+    required String receiverId,
+    required String content,
+    required bool isEncrypted,
+    String status = 'sent',
+  }) async {
     try {
       final timestamp = FieldValue.serverTimestamp();
       final messageId = const Uuid().v4();
@@ -204,23 +207,35 @@ class RedBoxService {
         'timestamp': timestamp,
         'isDelivered': false,
         'isSeen': false,
-        'isEncrypted': true,
+        'isEncrypted': isEncrypted,
+        'status': status,
       };
       
-      await messageRef.set(message);
-      
+      // Try to send to Firestore if online
+      final connectivityService = ConnectivityService();
+      if (connectivityService.hasConnection && status != 'pending') {
+        await messageRef.set(message);
+      } else {
+        // Store locally for offline use
+        await _cacheMessageLocally(senderId, receiverId, content, isEncrypted);
+      }
     } catch (e) {
       // If failed due to connectivity, cache locally
       if (e is FirebaseException && e.message?.contains('network') == true) {
-        await _cacheMessageLocally(senderId, receiverId, content);
+        await _cacheMessageLocally(senderId, receiverId, content, isEncrypted);
       } else {
-      throw Exception('Failed to send Red Box message: ${e.toString()}');
+        throw Exception('Failed to send Red Box message: ${e.toString()}');
       }
     }
   }
   
   // Cache message locally when offline
-  Future<void> _cacheMessageLocally(String senderId, String receiverId, String content) async {
+  Future<void> _cacheMessageLocally(
+    String senderId, 
+    String receiverId, 
+    String content,
+    bool isEncrypted,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final messageId = const Uuid().v4();
@@ -231,11 +246,11 @@ class RedBoxService {
         'senderId': senderId,
         'receiverId': receiverId,
         'content': content,
-        'timestamp': DateTime.now().toIso8601String(),
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
         'isDelivered': false,
         'isSeen': false,
-        'isEncrypted': true,
-        'isPending': true,
+        'isEncrypted': isEncrypted,
+        'status': 'pending',
       };
       
       // Get existing cache or create new one
@@ -259,48 +274,64 @@ class RedBoxService {
   }
   
   // Sync pending messages when back online
-  Future<void> syncPendingMessages() async {
+  Future<SyncResult> syncPendingMessages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedData = prefs.getString(_redBoxCacheKey);
       
-      if (cachedData == null) return;
+      if (cachedData == null || cachedData.isEmpty) {
+        return SyncResult(
+          success: true,
+          messagesSynced: 0,
+          errors: [],
+        );
+      }
       
-      final decoded = jsonDecode(cachedData) as List;
-      final cachedMessages = decoded.cast<Map<String, dynamic>>();
+      final cachedMessages = jsonDecode(cachedData) as List<dynamic>;
+      final syncErrors = <String>[];
+      int syncedCount = 0;
       
-      if (cachedMessages.isEmpty) return;
-      
-      final pendingMessages = cachedMessages.where((msg) => msg['isPending'] == true).toList();
-      final timestamp = FieldValue.serverTimestamp();
-      
-      for (var message in pendingMessages) {
-        try {
-          // Update the timestamp to server timestamp
-          message['timestamp'] = timestamp;
-          
-          // Send to Firestore
-          await _firestore
-              .collection(_redBoxMessagesCollection)
-              .doc(message['id'])
-              .set({
-                ...message,
-                'isPending': false,
-              });
-          
-          // Mark as synced in local cache
-          message['isPending'] = false;
-        } catch (e) {
-          debugPrint('Error syncing message ${message['id']}: ${e.toString()}');
+      // Process each cached message
+      for (int i = 0; i < cachedMessages.length; i++) {
+        final messageData = cachedMessages[i];
+        final isPending = messageData['isPending'] == true || messageData['status'] == 'pending';
+        
+        if (isPending) {
+          try {
+            // Create a message reference
+            final messageId = messageData['id'];
+            final messageRef = _firestore.collection(_redBoxMessagesCollection).doc(messageId);
+            
+            // Update the message data for consistency
+            messageData['isPending'] = false;
+            messageData['status'] = 'sent';
+            
+            // Set message data in Firestore
+            await messageRef.set(messageData);
+            
+            syncedCount++;
+          } catch (e) {
+            syncErrors.add('Failed to sync message ${messageData['id']}: ${e.toString()}');
+          }
         }
       }
       
-      // Save updated cache
+      // Update the cache with the new statuses
       await prefs.setString(_redBoxCacheKey, jsonEncode(cachedMessages));
       await prefs.setString(_lastSyncTimeKey, DateTime.now().toIso8601String());
       
+      return SyncResult(
+        success: syncErrors.isEmpty,
+        messagesSynced: syncedCount,
+        errors: syncErrors,
+      );
     } catch (e) {
       debugPrint('Error syncing pending messages: ${e.toString()}');
+      return SyncResult(
+        success: false,
+        messagesSynced: 0,
+        errors: ['Error syncing messages: ${e.toString()}'],
+      );
     }
   }
   
@@ -664,4 +695,256 @@ class RedBoxService {
       debugPrint('Error marking Red Box message as seen: ${e.toString()}');
     }
   }
+
+  // Check if there are any pending messages that need to be synced
+  Future<bool> hasPendingMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(_redBoxCacheKey);
+      
+      if (cachedData == null || cachedData.isEmpty) {
+        return false;
+      }
+      
+      final cachedMessages = jsonDecode(cachedData) as List<dynamic>;
+      
+      // Check if any cached messages are marked as pending
+      for (final messageData in cachedMessages) {
+        if (messageData['status'] == 'pending') {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      debugPrint('Error checking for pending messages: ${e.toString()}');
+      return false;
+    }
+  }
+  
+  // Get count of pending messages
+  Future<int> getPendingMessageCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(_redBoxCacheKey);
+      
+      if (cachedData == null || cachedData.isEmpty) {
+        return 0;
+      }
+      
+      final cachedMessages = jsonDecode(cachedData) as List<dynamic>;
+      
+      // Count cached messages that are marked as pending
+      int pendingCount = 0;
+      for (final messageData in cachedMessages) {
+        if (messageData['status'] == 'pending') {
+          pendingCount++;
+        }
+      }
+      
+      return pendingCount;
+    } catch (e) {
+      debugPrint('Error getting pending message count: ${e.toString()}');
+      return 0;
+    }
+  }
+
+
+
+  // Method to cache all user data for offline use
+  Future<bool> cacheAppData(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Cache user contacts
+      final contacts = await _cacheUserContacts(userId);
+      
+      // Cache recent messages for each contact
+      int cachedMessagesCount = 0;
+      for (final contact in contacts) {
+        final messages = await _cacheContactMessages(userId, contact.uid);
+        cachedMessagesCount += messages;
+      }
+      
+      // Store last cache time
+      await prefs.setInt('app_data_last_cache_time', DateTime.now().millisecondsSinceEpoch);
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error caching app data: ${e.toString()}');
+      return false;
+    }
+  }
+  
+  // Helper method to cache user contacts
+  Future<List<AppUser>> _cacheUserContacts(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final contactsSnapshot = await _firestore
+          .collection(_usersCollection)
+          .get();
+      
+      final List<Map<String, dynamic>> contactsData = [];
+      final List<AppUser> contacts = [];
+      
+      for (final doc in contactsSnapshot.docs) {
+        final userData = doc.data();
+        
+        // Skip current user
+        if (doc.id == userId) continue;
+        
+        contactsData.add(userData);
+        
+        final appUser = AppUser(
+          uid: doc.id,
+          email: userData['email'] ?? '',
+          username: userData['username'] ?? '',
+          displayName: userData['displayName'] ?? '',
+          profilePicUrl: userData['profilePicUrl'] ?? '',
+        );
+        
+        contacts.add(appUser);
+      }
+      
+      // Store contacts data
+      await prefs.setString('cached_contacts', jsonEncode(contactsData));
+      
+      return contacts;
+    } catch (e) {
+      debugPrint('Error caching contacts: ${e.toString()}');
+      return [];
+    }
+  }
+  
+  // Helper method to cache messages for a specific contact
+  Future<int> _cacheContactMessages(String userId, String contactId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get the most recent messages (limit to 50)
+      final messagesSnapshot = await _firestore
+          .collection(_redBoxMessagesCollection)
+          .where('senderId', whereIn: [userId, contactId])
+          .where('receiverId', whereIn: [userId, contactId])
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .get();
+      
+      final List<Map<String, dynamic>> messagesData = [];
+      
+      for (final doc in messagesSnapshot.docs) {
+        messagesData.add(doc.data());
+      }
+      
+      // Store messages for this contact
+      final cacheKey = 'cached_messages_${userId}_$contactId';
+      await prefs.setString(cacheKey, jsonEncode(messagesData));
+      
+      return messagesData.length;
+    } catch (e) {
+      debugPrint('Error caching messages for contact $contactId: ${e.toString()}');
+      return 0;
+    }
+  }
+
+  // Get cached contacts when offline
+  Future<List<AppUser>> getCachedContacts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString('cached_contacts');
+      
+      if (cachedData == null || cachedData.isEmpty) {
+        return [];
+      }
+      
+      final contactsData = jsonDecode(cachedData) as List<dynamic>;
+      final contacts = <AppUser>[];
+      
+      for (final userData in contactsData) {
+        contacts.add(AppUser(
+          uid: userData['uid'] ?? '',
+          email: userData['email'] ?? '',
+          username: userData['username'] ?? '',
+          displayName: userData['displayName'] ?? '',
+          profilePicUrl: userData['profilePicUrl'] ?? '',
+        ));
+      }
+      
+      return contacts;
+    } catch (e) {
+      debugPrint('Error getting cached contacts: ${e.toString()}');
+      return [];
+    }
+  }
+  
+  // Get cached messages for a specific contact when offline
+  Future<List<RedBoxMessage>> getCachedContactMessages(String userId, String contactId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey = 'cached_messages_${userId}_$contactId';
+      final cachedData = prefs.getString(cacheKey);
+      
+      if (cachedData == null || cachedData.isEmpty) {
+        return [];
+      }
+      
+      final messagesData = jsonDecode(cachedData) as List<dynamic>;
+      final messages = <RedBoxMessage>[];
+      
+      for (final messageData in messagesData) {
+        messages.add(RedBoxMessage(
+          id: messageData['id'] ?? '',
+          senderId: messageData['senderId'] ?? '',
+          receiverId: messageData['receiverId'] ?? '',
+          content: messageData['content'] ?? '',
+          timestamp: DateTime.fromMillisecondsSinceEpoch(messageData['timestamp'] ?? 0),
+          isSeen: messageData['isSeen'] ?? false,
+          isDelivered: messageData['isDelivered'] ?? false,
+          isEncrypted: messageData['isEncrypted'] ?? true,
+        ));
+      }
+      
+      // Sort by timestamp
+      messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      
+      return messages;
+    } catch (e) {
+      debugPrint('Error getting cached messages for contact $contactId: ${e.toString()}');
+      return [];
+    }
+  }
+  
+  // Check if app data is cached and fresh (less than 24 hours old)
+  Future<bool> hasFreshCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastCacheTimeMs = prefs.getInt('app_data_last_cache_time');
+      
+      if (lastCacheTimeMs == null) {
+        return false;
+      }
+      
+      final lastCacheTime = DateTime.fromMillisecondsSinceEpoch(lastCacheTimeMs);
+      final now = DateTime.now();
+      
+      // Data is fresh if cached less than 24 hours ago
+      return now.difference(lastCacheTime).inHours < 24;
+    } catch (e) {
+      debugPrint('Error checking cached data freshness: ${e.toString()}');
+      return false;
+    }
+  }
+}
+
+// Class to represent sync operation results
+class SyncResult {
+  final bool success;
+  final int messagesSynced;
+  final List<String> errors;
+  
+  SyncResult({
+    required this.success,
+    required this.messagesSynced,
+    required this.errors,
+  });
 } 

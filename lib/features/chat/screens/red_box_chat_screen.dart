@@ -10,6 +10,8 @@ import '../../../services/panic_button_service.dart';
 import '../../../services/connectivity_service.dart';
 import '../../user/models/app_user.dart';
 import '../models/red_box_message.dart';
+import '../widgets/sync_status_indicator.dart';
+import '../widgets/message_status_indicator.dart';
 
 class RedBoxChatScreen extends StatefulWidget {
   final AppUser otherUser;
@@ -108,20 +110,32 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
       return;
     }
     
-    try {
+    final currentUserUid = _currentUserId;
+    
+    if (currentUserUid != null && _messageController.text.trim().isNotEmpty) {
+      final messageText = _messageController.text.trim();
+      _messageController.clear();
+
+      final isOnline = await _checkConnectivity();
+      final status = isOnline ? 'sent' : 'pending'; // Set status based on connectivity
+
       await _redBoxService.sendRedBoxMessage(
-        _currentUserId!,
-        widget.otherUser.uid,
-        message,
+        senderId: currentUserUid,
+        receiverId: widget.otherUser.uid,
+        content: messageText,
+        isEncrypted: true,
+        status: status, // Pass the status to the service
       );
-    } catch (e) {
-      // Show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send message: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      // Show indicator if message is pending
+      if (!isOnline) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are offline. Message will be sent when you reconnect.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
   
@@ -207,6 +221,8 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
         ),
         backgroundColor: Colors.red.shade800,
         actions: [
+          const SyncStatusIndicator(size: 18, showLabel: false),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
@@ -606,11 +622,7 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
                 ),
                 if (isMyMessage) ...[
                   const SizedBox(width: 4),
-                  Icon(
-                    message.isSeen ? Icons.done_all : Icons.done,
-                    size: 12,
-                    color: message.isSeen ? Colors.white : Colors.white.withOpacity(0.7),
-                  ),
+                  MessageStatusIndicator(message: message, size: 12),
                 ],
               ],
             ),
@@ -647,6 +659,11 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
       // Other date: show full date + time
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}, $timeStr';
     }
+  }
+
+  Future<bool> _checkConnectivity() async {
+    final connectivityService = ConnectivityService();
+    return connectivityService.hasConnection;
   }
 }
 

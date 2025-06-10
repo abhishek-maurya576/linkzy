@@ -9,6 +9,7 @@ class RedBoxMessage {
   final bool isSeen;
   final bool isDelivered;
   final bool isEncrypted;
+  final String status;
 
   RedBoxMessage({
     required this.id,
@@ -19,6 +20,7 @@ class RedBoxMessage {
     this.isSeen = false,
     this.isDelivered = false,
     this.isEncrypted = true,
+    this.status = 'sent',
   });
 
   Map<String, dynamic> toMap() => {
@@ -26,10 +28,11 @@ class RedBoxMessage {
     'senderId': senderId,
     'receiverId': receiverId,
     'content': content,
-    'timestamp': timestamp,
+    'timestamp': timestamp.millisecondsSinceEpoch,
     'isSeen': isSeen,
     'isDelivered': isDelivered,
     'isEncrypted': isEncrypted,
+    'status': status,
   };
 
   factory RedBoxMessage.fromMap(Map<String, dynamic> map) => RedBoxMessage(
@@ -37,10 +40,15 @@ class RedBoxMessage {
     senderId: map['senderId'] ?? '',
     receiverId: map['receiverId'] ?? '',
     content: map['content'] ?? '',
-    timestamp: _parseTimestamp(map['timestamp']),
+    timestamp: map['timestamp'] != null 
+        ? (map['timestamp'] is DateTime 
+            ? map['timestamp'] 
+            : DateTime.fromMillisecondsSinceEpoch(map['timestamp']))
+        : DateTime.now(),
     isSeen: map['isSeen'] ?? false,
     isDelivered: map['isDelivered'] ?? false,
     isEncrypted: map['isEncrypted'] ?? true,
+    status: map['status'] ?? 'sent',
   );
   
   RedBoxMessage copyWith({
@@ -52,6 +60,7 @@ class RedBoxMessage {
     bool? isSeen,
     bool? isDelivered,
     bool? isEncrypted,
+    String? status,
   }) {
     return RedBoxMessage(
       id: id ?? this.id,
@@ -62,6 +71,7 @@ class RedBoxMessage {
       isSeen: isSeen ?? this.isSeen,
       isDelivered: isDelivered ?? this.isDelivered,
       isEncrypted: isEncrypted ?? this.isEncrypted,
+      status: status ?? this.status,
     );
   }
 

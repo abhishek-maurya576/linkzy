@@ -11,6 +11,7 @@ import '../../user/models/contact.dart';
 import '../../user/screens/contacts_screen.dart';
 import '../models/red_box_message.dart';
 import 'red_box_chat_screen.dart';
+import '../widgets/sync_status_indicator.dart';
 
 class RedBoxChatListScreen extends StatefulWidget {
   final bool isDecoyMode;
@@ -37,15 +38,19 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
   
   // Track processed message IDs to prevent duplicate notifications
   final Map<String, String> _processedMessageIds = {};
+  bool _isDecoyMode = false;
+  bool _isLoading = false;
+  List<AppUser> _cachedUsers = [];
 
   @override
   void initState() {
     super.initState();
-    // Get current user ID from Firebase Auth
+    _isDecoyMode = widget.isDecoyMode;
     _currentUserId = _redBoxService.currentUserId;
     
     // Initialize connectivity monitoring
     _initConnectivity();
+    _checkAndCacheData();
   }
   
   Future<void> _initConnectivity() async {
@@ -399,6 +404,17 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
         ),
         backgroundColor: Colors.red.shade800, // Special red color for Red Box
         actions: [
+          // Sync status indicator
+          const SyncStatusIndicator(size: 18, showLabel: false),
+          const SizedBox(width: 8),
+          
+          // Refresh and sync button
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshAndSync,
+            tooltip: 'Refresh & Sync',
+          ),
+          
           // Panic button configuration
           if (!widget.isDecoyMode)
             IconButton(
@@ -417,7 +433,44 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
           ),
         ],
       ),
-      body: body,
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Offline indicator
+                if (!_isOnline)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.orange.shade100,
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.wifi_off, color: Colors.orange.shade900, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Offline Mode - Messages will sync when connection returns',
+                            style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _refreshAndSync,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            backgroundColor: Colors.orange.shade200,
+                            foregroundColor: Colors.orange.shade900,
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          child: const Text('SYNC'),
+                        ),
+                      ],
+                    ),
+                  ),
+                
+                // Chat list
+                Expanded(child: body),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToContacts,
         backgroundColor: Colors.red.shade800,
@@ -676,7 +729,98 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
       ),
     );
   }
-}
+
+  Future<void> _checkAndCacheData() async {
+    final connectivityService = ConnectivityService();
+    final currentUserId = _currentUserId;
+    final hasConnection = connectivityService.hasConnection;
+    
+    if (currentUserId != null) {
+      // If online and no fresh cached data, cache app data
+      final hasFreshCache = await _redBoxService.hasFreshCachedData();
+      if (hasConnection && !hasFreshCache) {
+        await _redBoxService.cacheAppData(currentUserId);
+      }
+      
+      // Check for pending messages and sync if online
+      if (hasConnection) {
+        final hasPending = await _redBoxService.hasPendingMessages();
+        if (hasPending) {
+          connectivityService.forceSyncPendingMessages();
+        }
+      }
+      
+      // Load cached users for offline mode
+      _loadCachedUsers();
+    }
+  }
+
+  Future<void> _loadCachedUsers() async {
+    final cachedUsers = await _redBoxService.getCachedContacts();
+    if (mounted) {
+      setState(() {
+        _cachedUsers = cachedUsers;
+      });
+    }
+  }
+
+  Future<void> _refreshAndSync() async {
+    if (_currentUserId == null) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Cache app data for offline use
+      await _redBoxService.cacheAppData(_currentUserId!);
+      
+      // Reload cached users
+      await _loadCachedUsers();
+
+      // Force sync if online
+      if (_connectivityService.hasConnection) {
+        await _connectivityService.forceSyncPendingMessages();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Data synced successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You are offline. App data cached for offline use.'),
+              backgroundColor: Colors.amber,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error syncing data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+} // End of _RedBoxChatListScreenState class
 
 // New screen to select contacts for Red Box chats
 class ContactsSelectionScreen extends StatefulWidget {
