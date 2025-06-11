@@ -558,7 +558,9 @@ class _RedBoxChatListScreenState extends State<RedBoxChatListScreen> {
             radius: 24,
             backgroundColor: Colors.red.shade800,
             backgroundImage: user.profilePicUrl != null && user.profilePicUrl.isNotEmpty
-                ? NetworkImage(user.profilePicUrl)
+                ? user.profilePicUrl.startsWith('assets/')
+                    ? AssetImage(user.profilePicUrl) as ImageProvider
+                    : NetworkImage(user.profilePicUrl)
                 : null,
             child: (user.profilePicUrl == null || user.profilePicUrl.isEmpty)
                 ? Text(
@@ -965,7 +967,9 @@ class _ContactsSelectionScreenState extends State<ContactsSelectionScreen> {
                 backgroundColor: Colors.red.shade800,
                 backgroundImage: user.profilePicUrl != null && 
                               user.profilePicUrl.isNotEmpty
-                    ? NetworkImage(user.profilePicUrl)
+                    ? user.profilePicUrl.startsWith('assets/')
+                        ? AssetImage(user.profilePicUrl) as ImageProvider
+                        : NetworkImage(user.profilePicUrl)
                     : null,
                 child: user.profilePicUrl == null || user.profilePicUrl.isEmpty
                     ? Text(

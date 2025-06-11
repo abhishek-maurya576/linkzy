@@ -177,7 +177,9 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
               backgroundColor: Colors.red.shade800,
               backgroundImage: widget.otherUser.profilePicUrl != null && 
                             widget.otherUser.profilePicUrl!.isNotEmpty
-                  ? NetworkImage(widget.otherUser.profilePicUrl!)
+                  ? widget.otherUser.profilePicUrl!.startsWith('assets/')
+                      ? AssetImage(widget.otherUser.profilePicUrl!) as ImageProvider
+                      : NetworkImage(widget.otherUser.profilePicUrl!)
                   : null,
               child: (widget.otherUser.profilePicUrl == null || 
                   widget.otherUser.profilePicUrl!.isEmpty)
@@ -578,56 +580,90 @@ class _RedBoxChatScreenState extends State<RedBoxChatScreen> {
     
     return Align(
       alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          top: isFirstInGroup ? 2 : 1,
-          bottom: isLastInGroup ? 2 : 1,
-          left: isMyMessage ? 50 : 0,
-          right: isMyMessage ? 0 : 50,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMyMessage 
-              ? Colors.red.shade800
-              : Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[800]
-                  : Colors.grey[200],
-          borderRadius: bubbleRadius,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                color: isMyMessage ? Colors.white : null,
+      child: Row(
+        mainAxisAlignment: isMyMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMyMessage && isFirstInGroup) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.red.shade800,
+              backgroundImage: widget.otherUser.profilePicUrl != null && 
+                          widget.otherUser.profilePicUrl!.isNotEmpty
+                ? widget.otherUser.profilePicUrl!.startsWith('assets/')
+                    ? AssetImage(widget.otherUser.profilePicUrl!) as ImageProvider
+                    : NetworkImage(widget.otherUser.profilePicUrl!)
+                : null,
+              child: (widget.otherUser.profilePicUrl == null || 
+                  widget.otherUser.profilePicUrl!.isEmpty)
+                  ? Text(
+                      widget.otherUser.displayName[0].toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (!isMyMessage && !isFirstInGroup)
+            const SizedBox(width: 40), // Space for avatar alignment
+          Flexible(
+            child: Container(
+              margin: EdgeInsets.only(
+                top: isFirstInGroup ? 2 : 1,
+                bottom: isLastInGroup ? 2 : 1,
+                left: 0,
+                right: 0,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isMyMessage 
+                    ? Colors.red.shade800
+                    : Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[200],
+                borderRadius: bubbleRadius,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.content,
+                    style: TextStyle(
+                      color: isMyMessage ? Colors.white : null,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock,
+                        size: 10,
+                        color: isMyMessage ? Colors.white.withOpacity(0.7) : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatMessageTime(message.timestamp),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isMyMessage ? Colors.white.withOpacity(0.7) : Colors.grey[600],
+                        ),
+                      ),
+                      if (isMyMessage) ...[
+                        const SizedBox(width: 4),
+                        MessageStatusIndicator(message: message, size: 12),
+                      ],
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.lock,
-                  size: 10,
-                  color: isMyMessage ? Colors.white.withOpacity(0.7) : Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _formatMessageTime(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isMyMessage ? Colors.white.withOpacity(0.7) : Colors.grey[600],
-                  ),
-                ),
-                if (isMyMessage) ...[
-                  const SizedBox(width: 4),
-                  MessageStatusIndicator(message: message, size: 12),
-                ],
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
